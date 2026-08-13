@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#FFFFFF">
+<title>INSEE Driver Training</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --red:#C8102E;--red-dark:#A50D26;--darker:#F5F6F8;--card:#fff;--card-border:#E5E7EB;
+  --text:#1B1F27;--dim:#6B7280;--green:#16A34A;--green-dark:#15803D;--wrong:#DC2626;--amber:#92400E;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 10px 28px rgba(16,24,40,.06);--radius:16px;
+}
+body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--darker);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* header */
+.header{background:#fff;border-bottom:1px solid var(--card-border);padding:14px 20px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50}
+.header-logo{width:132px;height:34px;background:url('insee-corp.png') no-repeat left center;background-size:contain;flex-shrink:0}
+.header-text{border-left:1px solid var(--card-border);padding-left:14px}
+.header-text h1{font-size:16px;font-weight:600;line-height:1.35}
+.header-text p{font-size:11px;color:var(--dim);line-height:1.45;margin-top:2px}
+.logout-btn{margin-left:auto;font-size:12px;color:var(--dim);background:none;border:1px solid var(--card-border);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:inherit;display:none}
+@media(max-width:600px){.header{padding:12px 14px;gap:10px}.header-logo{width:104px;height:26px}.header-text h1{font-size:14px}.header-text p{display:none}}
+
+/* stepbar */
+.stepbar-wrap{max-width:760px;margin:0 auto;padding:18px 12px 0}
+.stepbar{display:flex;align-items:flex-start}
+.stepbar .step{flex:1 1 0;min-width:0;padding:0 2px;display:flex;flex-direction:column;align-items:center;position:relative}
+.stepbar .step:not(:first-child)::before{content:'';position:absolute;z-index:0;top:16px;height:2px;left:calc(-50% + 22px);width:calc(100% - 44px);background:#E5E7EB;transition:background .35s}
+.stepbar .step.done::before,.stepbar .step.skip::before{background:var(--green)}
+.stepbar .step.current::before,.stepbar .step.reject::before{background:var(--red)}
+.stepbar .circle{position:relative;z-index:2;width:34px;height:34px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;line-height:1;background:#fff;border:2px solid #DCE0E6;color:#9CA3AF;transition:all .35s}
+.stepbar .step.done .circle{background:var(--green);border-color:var(--green);color:#fff}
+.stepbar .step.skip .circle{border-color:var(--green);color:var(--green)}
+.stepbar .step.current .circle{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 0 0 4px rgba(200,16,46,.12)}
+.stepbar .step.reject .circle{background:var(--wrong);border-color:var(--wrong);color:#fff;box-shadow:0 0 0 4px rgba(220,38,38,.12)}
+.stepbar .lbl{width:100%;font-size:10px;line-height:1.3;margin-top:7px;text-align:center;color:var(--dim);word-break:break-word}
+.stepbar .step.done .lbl,.stepbar .step.skip .lbl{color:var(--green)}
+.stepbar .step.current .lbl{color:var(--text);font-weight:500}
+.stepbar .step.reject .lbl{color:var(--wrong);font-weight:500}
+.step-summary{margin-top:14px;border-radius:10px;padding:11px 15px;font-size:13px;line-height:1.6}
+.step-summary.ok{background:#F0FDF4;border:1px solid #BBF7D0;color:var(--green-dark)}
+.step-summary.warn{background:#FFFBEB;border:1px solid #FDE68A;color:var(--amber)}
+.step-summary.bad{background:#FEF2F2;border:1px solid #FECACA;color:var(--wrong)}
+.step-summary.info{background:#F7F8FA;border:1px solid var(--card-border);color:var(--dim)}
+@media(max-width:600px){.stepbar-wrap{padding:14px 8px 0}.stepbar .circle{width:30px;height:30px;font-size:13px}.stepbar .step:not(:first-child)::before{top:14px;left:calc(-50% + 20px);width:calc(100% - 40px)}.stepbar .lbl{font-size:9px}}
+
+/* layout */
+.screen{display:none;animation:fade .25s ease}
+.screen.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.wrap{max-width:480px;margin:0 auto;padding:20px}
+.wrap-wide{max-width:800px;margin:0 auto;padding:20px}
+.card{background:#fff;border:1px solid var(--card-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 22px}
+.card h2{font-size:19px;color:var(--red);font-weight:600;text-align:center;margin-bottom:6px}
+.card>.sub{font-size:13px;color:var(--dim);text-align:center;margin-bottom:20px;line-height:1.6}
+
+/* form */
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:12px;color:var(--dim);margin-bottom:5px}
+.fld input{width:100%;padding:11px 14px;background:#fff;border:1px solid #D5D8DE;border-radius:10px;color:var(--text);font-family:inherit;font-size:15px}
+.fld input:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.10)}
+.fld input::placeholder{color:#9CA3AF}
+.hint{font-size:11px;margin-top:4px;display:none}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;padding:10px;border-radius:10px;border:1px solid #D5D8DE;background:#fff;color:var(--dim);font-family:inherit;font-size:13px;cursor:pointer;transition:all .2s}
+.seg button.on{background:var(--red);border-color:var(--red);color:#fff}
+
+/* buttons */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px 24px;border:none;border-radius:10px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn+.btn{margin-top:10px}
+.b-red{background:var(--red);color:#fff}.b-red:hover{background:var(--red-dark)}
+.b-green{background:var(--green);color:#fff}.b-green:hover{background:var(--green-dark)}
+.b-ghost{background:#fff;color:var(--text);border:1px solid #D5D8DE}.b-ghost:hover{background:#F7F8FA}
+.btn:disabled{opacity:.45;cursor:wait}
+
+/* video */
+.vid{position:relative;width:100%;padding-bottom:56.25%;background:#000;border-radius:12px;overflow:hidden}
+.vid #ytWrap,.vid iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+@media(max-width:600px){.vid{border-radius:0;margin:0 -20px;width:calc(100% + 40px)}}
+.prog{margin-top:18px;background:#fff;border:1px solid var(--card-border);border-radius:12px;box-shadow:var(--shadow);padding:18px}
+.prog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.prog-top h3{font-size:14px;color:var(--red);font-weight:600}
+.prog-time{font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
+.bar{width:100%;height:8px;background:#F7F8FA;border-radius:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--red);border-radius:4px;width:0;transition:width .6s}
+.pct{text-align:right;font-size:24px;font-weight:700;color:var(--red);margin-top:8px}
+.badges{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.bdg{display:none;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px}
+.bdg.on{display:inline-flex}
+.b-watch{background:#FEF2F2;color:var(--red);border:1px solid #FECACA}
+.b-pause{background:#F3F4F6;color:var(--dim);border:1px solid var(--card-border)}
+.b-save{background:#FFFBEB;color:var(--amber);border:1px solid #FDE68A}
+.tip{background:#FFFBEB;border:1px solid #FDE68A;color:var(--amber);border-radius:10px;padding:11px 15px;margin-top:14px;font-size:12px;line-height:1.6}
+.notice{border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:13px;display:none}
+.n-warn{background:#FFFBEB;border:1px solid #FDE68A;color:var(--amber)}
+.n-bad{background:#FEF2F2;border:1px solid #FECACA;color:var(--wrong)}
+
+/* quiz */
+.qhead{background:#fff;border:1px solid var(--card-border);border-radius:12px;box-shadow:var(--shadow);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:13px}
+.qhead b{color:var(--red);font-size:14px}
+.qbar{height:4px;background:#E5E7EB;border-radius:2px;margin-bottom:16px;overflow:hidden}
+.qbar>i{display:block;height:100%;background:var(--red);width:0;transition:width .3s}
+.qcard{background:#fff;border:1px solid var(--card-border);border-radius:14px;box-shadow:var(--shadow);padding:22px 20px;margin-bottom:14px}
+.qnum{display:inline-block;background:var(--red);color:#fff;padding:3px 12px;border-radius:8px;font-size:12px;font-weight:600;margin-bottom:12px}
+.qtext{font-size:16px;font-weight:500;line-height:1.7;margin-bottom:18px}
+.ch{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:8px;background:#fff;border:2px solid var(--card-border);border-radius:10px;cursor:pointer;font-size:14px;transition:all .15s}
+.ch:hover{border-color:#C4C8CF}
+.ch.on{background:#FEF2F2;border-color:var(--red)}
+.dot{width:20px;height:20px;border-radius:50%;border:2px solid #D5D8DE;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ch.on .dot{border-color:var(--red)}
+.ch.on .dot::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--red)}
+.qnav{display:flex;gap:10px}.qnav .btn{margin-top:0}
+
+/* selfie */
+.selfie-ring{width:200px;height:200px;margin:16px auto;border-radius:50%;overflow:hidden;border:3px solid var(--red);background:#F7F8FA;display:flex;align-items:center;justify-content:center;font-size:48px;color:#D5D8DE}
+.selfie-ring img{width:100%;height:100%;object-fit:cover}
+
+/* upload */
+.info-box{background:#F7F8FA;border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:13px}
+.info-box div{display:flex;justify-content:space-between;padding:3px 0}
+.info-box .k{color:var(--dim)}
+.pill{padding:2px 10px;border-radius:6px;font-size:12px;background:rgba(200,16,46,.10);color:var(--red)}
+.up{margin-bottom:18px}
+.up-lbl{font-size:14px;font-weight:500;margin-bottom:8px}
+.up-lbl i{color:var(--wrong);font-size:11px;font-style:normal;margin-left:6px}
+.zone{position:relative;border:2px dashed #D5D8DE;border-radius:12px;padding:22px;text-align:center;background:#FAFBFC;cursor:pointer;overflow:hidden;transition:all .2s}
+.zone:hover{border-color:var(--red);background:#FEF6F7}
+.zone.has{border-style:solid;border-color:var(--green);background:#F7FEF9}
+.zone input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:5}
+.zone .ic{font-size:30px;margin-bottom:6px}
+.zone .ht{font-size:12px;color:var(--dim)}
+.zone.has .ht{display:none}
+.zone .fn{display:none;font-size:13px;color:var(--green);margin-top:6px;word-break:break-all}
+.zone.has .fn{display:block}
+.zone img{display:none;max-width:100%;max-height:150px;border-radius:8px;margin-top:10px}
+.zone .pdf{display:none;margin-top:10px;padding:9px 14px;border-radius:8px;background:rgba(200,16,46,.08);font-size:12px;color:var(--red)}
+.statbox{border:2px solid;border-radius:12px;padding:15px;text-align:center;font-size:14px}
+.s-pass{border-color:var(--green);color:var(--green);background:#F0FDF4}
+.s-wait{border-color:#FDE68A;color:var(--amber);background:#FFFBEB}
+
+/* result / cert */
+.big-ic{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:36px;color:#fff}
+.ic-g{background:var(--green)}.ic-r{background:var(--wrong)}.ic-red{background:var(--red)}
+.score{font-size:46px;font-weight:700;margin:10px 0;text-align:center}
+.detail{background:#F7F8FA;border-radius:10px;padding:14px;margin:14px 0;font-size:13px}
+.detail div{display:flex;justify-content:space-between;padding:4px 0}
+.detail .k{color:var(--dim)}
+
+/* driver card */
+.dcard{position:relative;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(16,24,40,.18);color:#333;width:280px;height:445px;margin:20px auto 0}
+.dc-top{padding:14px 16px 8px;text-align:center;border-bottom:2px solid var(--red)}
+.dc-top .th{font-size:28px;font-weight:800;color:var(--red);line-height:1}
+.dc-top .sub{font-size:8px;color:#888}
+.dc-top .ttl{font-size:10px;font-weight:600;color:var(--red);margin-top:4px}
+.dc-top .type{display:inline-block;padding:1px 12px;background:var(--red);color:#fff;border-radius:3px;font-size:10px;font-weight:600;margin-top:4px}
+.dc-top .co{font-size:11px;font-weight:600;margin-top:6px;min-height:16px}
+.dc-body{padding:12px 16px 8px;text-align:center}
+.dc-row{display:flex;justify-content:center;gap:10px;margin-bottom:8px}
+.dc-photo{width:80px;height:100px;border-radius:6px;overflow:hidden;border:2px solid #ddd;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:28px;color:#ccc}
+.dc-photo img{width:100%;height:100%;object-fit:cover}
+.dc-qr{width:80px;height:80px;align-self:center;border:1px solid #eee;border-radius:6px;overflow:hidden}
+.dc-qr img{width:100%;height:100%}
+.dc-name{font-size:14px;font-weight:700}
+.dc-id{font-size:13px;font-weight:600;color:var(--red);font-family:monospace;letter-spacing:1px;margin-bottom:8px}
+.dc-f{text-align:left;padding:0 8px;font-size:10px;display:flex;margin-bottom:3px}
+.dc-f .k{color:#888;width:55px;flex-shrink:0}
+.dc-bot{position:absolute;bottom:32px;left:0;right:0;background:#f5f5f5;border-top:1px solid #eee;padding:6px 16px;display:flex;justify-content:space-between;font-size:9px;font-weight:600;color:#555}
+.dc-valid{position:absolute;bottom:0;left:0;right:0;padding:8px;background:var(--red);color:#fff;text-align:center;font-size:9px}
+.dc-valid b{font-size:13px;display:block;margin-top:1px}
+
+/* misc */
+.spin{width:38px;height:38px;border:3px solid var(--card-border);border-top-color:var(--red);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.load{text-align:center;padding:60px 20px;color:var(--dim)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(90px);background:#1B1F27;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.25);transition:transform .3s;z-index:200;max-width:90vw;text-align:center}
+.toast.on{transform:translateX(-50%) translateY(0)}
+#boot{position:fixed;inset:0;background:var(--darker);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:300;transition:opacity .4s}
+#boot.hide{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="boot"><div class="spin"></div><p style="font-size:13px;color:#6B7280">กำลังโหลด...</p></div>
+
+<div class="header">
+  <div class="header-logo"></div>
+  <div class="header-text"><h1>Driver Training System</h1><p>ระบบฝึกอบรมพนักงานขับรถ</p></div>
+  <button class="logout-btn" id="logoutBtn" onclick="logout()">ออกจากระบบ</button>
+</div>
+
+<div id="stepBarWrap" class="stepbar-wrap"></div>
+
+<!-- ===== LOGIN ===== -->
+<div id="scLogin" class="screen active"><div class="wrap"><div class="card">
+  <h2>เข้าสู่ระบบเรียน</h2>
+  <p class="sub">กรอกข้อมูลเพื่อเข้าเรียนหรือดำเนินการต่อ</p>
+  <div class="fld">
+    <label>ประเภทผู้เข้าโรงงาน</label>
+    <div class="seg" id="seg">
+      <button class="on" data-v="พนักงานขับรถ" onclick="selType(this)">พนักงานขับรถ</button>
+      <button data-v="ผู้ติดตาม" onclick="selType(this)">ผู้ติดตาม</button>
+    </div>
+  </div>
+  <div class="fld">
+    <label>เลขบัตรประชาชน</label>
+    <input id="inId" maxlength="13" inputmode="numeric" placeholder="กรอกเลข 13 หลัก">
+    <div class="hint" id="hint"></div>
+  </div>
+  <div class="fld">
+    <label>ชื่อ-นามสกุล <span style="color:var(--dim)">(เคยลงทะเบียนแล้วไม่ต้องกรอก)</span></label>
+    <input id="inName" placeholder="ชื่อ นามสกุล">
+  </div>
+  <button class="btn b-red" id="loginBtn" onclick="doLogin()">เข้าสู่ระบบ</button>
+</div></div></div>
+
+<!-- ===== VIDEO ===== -->
+<div id="scVideo" class="screen"><div class="wrap-wide">
+  <div class="notice n-warn" id="nResume"></div>
+  <div class="notice n-bad" id="nExpired"></div>
+  <div class="vid"><div id="ytWrap"><div id="ytPlayer"></div></div></div>
+  <div class="prog">
+    <div class="prog-top"><h3>ความคืบหน้า</h3><span class="prog-time" id="tDisp">00:00 / --:--</span></div>
+    <div class="bar"><i id="pFill"></i></div>
+    <div class="pct" id="pPct">0%</div>
+    <div class="badges">
+      <span class="bdg b-watch" id="bWatch"><span style="width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block"></span> กำลังนับเวลา</span>
+      <span class="bdg b-pause" id="bPause">หยุดชั่วคราว</span>
+      <span class="bdg b-save" id="bSave">บันทึก...</span>
+    </div>
+    <div class="tip">นับเวลาเฉพาะตอนอยู่หน้านี้ · สลับแท็บเวลาหยุดนับ · ลากข้ามไม่นับ</div>
+  </div>
+  <div id="vDone" style="display:none"><div class="card" style="margin-top:16px;text-align:center">
+    <div class="big-ic ic-g">✓</div><h2 style="color:var(--green)">เรียนจบแล้ว!</h2>
+    <p class="sub">ทำแบบทดสอบได้เลย</p>
+    <button class="btn b-green" onclick="goQuiz()">ไปทำแบบทดสอบ →</button>
+  </div></div>
+</div></div>
+
+<!-- ===== READY EXAM ===== -->
+<div id="scReady" class="screen"><div class="wrap"><div class="card" style="text-align:center">
+  <div class="big-ic ic-g">✓</div><h2 style="color:var(--green)">เรียนจบแล้ว</h2>
+  <p class="sub">คุณดู Video ครบแล้ว ทำแบบทดสอบได้เลย</p>
+  <button class="btn b-green" onclick="goQuiz()">ไปทำแบบทดสอบ →</button>
+  <button class="btn b-ghost" onclick="reviewVideo()">ดู Video ทบทวน</button>
+</div></div></div>
+
+<!-- ===== SELFIE ===== -->
+<div id="scSelfie" class="screen"><div class="wrap"><div class="card" style="text-align:center">
+  <h2>ยืนยันตัวตน</h2>
+  <p class="sub">ถ่ายรูปหน้าตรงก่อนเริ่มทำข้อสอบ<br><span style="font-size:11px">Safety จะตรวจสอบภายหลังว่าเป็นคนเดียวกัน</span></p>
+  <div class="selfie-ring" id="sRing">🤳</div>
+  <canvas id="sCanvas" style="display:none"></canvas>
+  <div id="sCapture">
+    <label class="btn b-ghost" style="position:relative;overflow:hidden;cursor:pointer">
+      ถ่ายรูป
+      <input type="file" accept="image/*" capture="user" id="sInput" onchange="onSelfie(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+    </label>
+  </div>
+  <button class="btn b-green" id="sOk" style="display:none" onclick="confirmSelfie()">ยืนยัน เริ่มสอบ</button>
+  <button class="btn b-ghost" id="sRetake" style="display:none" onclick="retakeSelfie()">ถ่ายใหม่</button>
+</div></div></div>
+
+<!-- ===== QUIZ ===== -->
+<div id="scQuiz" class="screen"><div class="wrap-wide">
+  <div class="qhead"><div><b>แบบทดสอบ</b><div id="qProg" style="color:var(--dim);margin-top:2px">ข้อ 1</div></div><span id="qPass" style="color:var(--dim)">ผ่าน 80%</span></div>
+  <div class="qbar"><i id="qBar"></i></div>
+  <div id="qArea"></div>
+  <div class="qnav">
+    <button class="btn b-ghost" id="qPrev" onclick="prevQ()" disabled>← ก่อนหน้า</button>
+    <button class="btn b-red" id="qNext" onclick="nextQ()">ถัดไป →</button>
+  </div>
+</div></div>
+
+<!-- ===== RESULT ===== -->
+<div id="scResult" class="screen"><div class="wrap" id="rArea"></div></div>
+
+<!-- ===== UPLOAD ===== -->
+<div id="scUpload" class="screen"><div class="wrap"><div class="card">
+  <div class="big-ic ic-g" id="uIcon">✓</div>
+  <h2 id="uTitle">สอบผ่านแล้ว!</h2>
+  <p class="sub" id="uDesc">กรุณาส่งเอกสารเพื่อดำเนินการต่อ</p>
+  <div class="info-box">
+    <div><span class="k">ชื่อ</span><span id="uName">—</span></div>
+    <div><span class="k">เลขบัตร</span><span id="uId">—</span></div>
+    <div><span class="k">ประเภท</span><span class="pill" id="uType">—</span></div>
+  </div>
+  <div class="fld" id="gTrans"><label>ชื่อบริษัทผู้ขนส่ง</label><input id="inTrans" placeholder="เช่น บริษัท ABC Logistics"></div>
+  <div class="fld" id="gPhone"><label>เบอร์โทรศัพท์</label><input id="inPhone" type="tel" inputmode="tel" placeholder="เช่น 081-234-5678"></div>
+  <div id="upList"></div>
+  <button class="btn b-green" id="uBtn" onclick="submitDocs()">ส่งเอกสาร</button>
+  <div id="uProg" style="display:none;margin-top:14px">
+    <p style="font-size:13px;color:var(--dim);text-align:center;margin-bottom:8px" id="uMsg">กำลังอัพโหลด...</p>
+    <div class="bar"><i id="uFill"></i></div>
+  </div>
+</div></div></div>
+
+<!-- ===== DONE ===== -->
+<div id="scDone" class="screen"><div class="wrap"><div class="card" style="text-align:center;padding:40px 22px">
+  <div class="big-ic ic-g">📋</div>
+  <h2 style="color:var(--green)">ส่งเอกสารเรียบร้อย!</h2>
+  <p class="sub">ไฟล์กำลังถูกย้ายไป Google Drive อัตโนมัติ<br>สถานะ: <b style="color:var(--amber)">รอตรวจเอกสาร</b></p>
+  <button class="btn b-red" onclick="refreshStatus()">ดูสถานะของฉัน</button>
+</div></div></div>
+
+<!-- ===== CERTIFIED ===== -->
+<div id="scCert" class="screen"><div class="wrap">
+  <div class="card" style="text-align:center">
+    <div class="big-ic ic-red" id="cIcon">★</div>
+    <h2 id="cTitle">ผ่านการอบรมแล้ว</h2>
+    <div class="detail" id="cExpBox">
+      <div><span class="k">วันหมดอายุ</span><span id="cExp">—</span></div>
+      <div><span class="k">เหลืออีก</span><span id="cLeft">—</span></div>
+    </div>
+    <p id="cDocSt" style="font-size:14px;margin-bottom:16px"></p>
+    <button class="btn b-ghost" id="cCardBtn" style="display:none" onclick="toggleCard()">ดูบัตรประจำตัว</button>
+    <button class="btn b-red" onclick="renewStart()">เริ่มเรียนใหม่เพื่อต่ออายุ →</button>
+  </div>
+  <div id="cardBox" style="display:none">
+    <div class="dcard" id="dCard">
+      <div class="dc-top">
+        <div class="th">อินทรี</div><div class="sub">ปูนซีเมนต์นครหลวง</div>
+        <div class="ttl">บัตรอนุญาตเข้า - ออกโรงงาน</div>
+        <div class="type" id="dcType">ทั่วไป</div>
+        <div class="co" id="dcCo">—</div>
+      </div>
+      <div class="dc-body">
+        <div class="dc-row"><div class="dc-photo" id="dcPhoto">🤳</div><div class="dc-qr" id="dcQr"></div></div>
+        <div class="dc-name" id="dcName">—</div>
+        <div class="dc-id" id="dcId">—</div>
+        <div class="dc-f"><span class="k">โทรศัพท์</span><span id="dcPhone">—</span></div>
+        <div class="dc-f"><span class="k">อบรม</span><span id="dcTrain">—</span></div>
+        <div class="dc-f"><span class="k">ตรวจโดย</span><span id="dcVer">—</span></div>
+      </div>
+      <div class="dc-bot"><span>สายงาน Commercial / Logistics</span><span style="color:var(--red)">✓ CERTIFIED</span></div>
+      <div class="dc-valid">VALID UNTIL<br><b id="dcExp">—</b></div>
+    </div>
+    <button class="btn b-ghost" style="margin-top:16px" onclick="saveCard()">บันทึกเป็นรูปภาพ</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════
+// ★★ ตั้งค่า — แก้ 2 บรรทัดนี้เท่านั้น ★★
+// ════════════════════════════════════════════════
+var API_URL = 'https://script.google.com/macros/s/AKfycbxwoUZwdSGD0AzJCuT67IOsTarnfCEc0MGd-yWX7T_K0y5oT5_OWo8L6DQpKC9Y3pqP/exec';
+var YT_ID   = 'oji0r8ko2Ns';
+// ════════════════════════════════════════════════
+
+var SAVE_EVERY = 15, DONE_AT = 0.985, MAX_MB = 8;
+var DOCS = [
+  {k:'idCard',   t:'บัตรประชาชน',      pdf:true},
+  {k:'license',  t:'ใบขับขี่',          pdf:true},
+  {k:'photo',    t:'รูปถ่ายหน้าตรง',    pdf:false},
+  {k:'medical',  t:'ใบรับรองแพทย์',     pdf:true},
+  {k:'drugTest', t:'ผลตรวจสารเสพติด',   pdf:true}
+];
+var STEPS = [['video','อบรม'],['selfie','ยืนยันตัวตน'],['exam','ทดสอบ'],['docs','เอกสาร'],['approve','อนุมัติ']];
+
+var U = {idCard:'',name:'',personType:'พนักงานขับรถ'};
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+var yt=null, playing=false, visible=true, watched={}, secs=0, dur=1493, done=false, tCount=null, tSave=null;
+var quiz=null, qid='', ans=[], qi=0, selfieB64=null, tookSelfie=false;
+var files={}, docSt={}, reup=false, submitting=false;
+
+// ── API helper ────────────────────────────────
+function api(action, p) {
+  return fetch(API_URL, {
+    method:'POST',
+    body: JSON.stringify({action:action, p:p||{}})   // ไม่ตั้ง Content-Type → เลี่ยง CORS preflight
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.ok) throw new Error(j.error||'error');
+    return j.data;
+  });
+}
+
+function $(id){ return document.getElementById(id); }
+function show(id){
+  var a=document.querySelectorAll('.screen');
+  for(var i=0;i<a.length;i++) a[i].classList.remove('active');
+  $(id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},3000); }
+function fmt(s){ s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+
+// ── session ───────────────────────────────────
+function saveSession(){ try{ sessionStorage.setItem('insee', JSON.stringify(U)); }catch(e){} }
+function logout(){ try{ sessionStorage.removeItem('insee'); }catch(e){} location.reload(); }
+
+// ── step bar ──────────────────────────────────
+function drawSteps(r){
+  var w=$('stepBarWrap');
+  if(!r || !r.success){ w.innerHTML=''; return; }
+  var h='<div class="stepbar">';
+  for(var i=0;i<STEPS.length;i++){
+    var st = r.steps[STEPS[i][0]] || 'todo';
+    var ic = (st==='done'||st==='skip') ? '✓' : st==='reject' ? '✕' : (i+1);
+    h += '<div class="step '+st+'"><div class="circle">'+ic+'</div><div class="lbl">'+STEPS[i][1]+'</div></div>';
+  }
+  h+='</div>';
+  if(r.allDone) h+='<div class="step-summary ok">✓ <b>ผ่านครบทุกขั้นตอนแล้ว</b>'+(r.expiryDate?' — บัตรใช้ได้ถึง <b>'+r.expiryDate+'</b> (เหลือ '+r.daysLeft+' วัน)':'')+'</div>';
+  else if(r.note) h+='<div class="step-summary '+(r.noteType||'info')+'">'+esc(r.note)+'</div>';
+  w.innerHTML=h;
+}
+function refreshSteps(){ if(U.idCard) api('progress',{idCard:U.idCard}).then(drawSteps).catch(function(){}); }
+
+// ── login ─────────────────────────────────────
+function selType(b){
+  U.personType = b.getAttribute('data-v');
+  var a=document.querySelectorAll('#seg button');
+  for(var i=0;i<a.length;i++) a[i].classList.remove('on');
+  b.classList.add('on');
+}
+function setTypeUI(v){
+  var a=document.querySelectorAll('#seg button');
+  for(var i=0;i<a.length;i++){
+    if(a[i].getAttribute('data-v')===v){ a[i].classList.add('on'); U.personType=v; }
+    else a[i].classList.remove('on');
+  }
+}
+
+$('inId').addEventListener('input', function(){
+  var v=this.value.trim(), hint=$('hint'), nm=$('inName');
+  if(v.length!==13){ hint.style.display='none'; nm.readOnly=false; return; }
+  api('lookup',{idCard:v}).then(function(r){
+    if(!r.found){ hint.style.display='none'; nm.readOnly=false; return; }
+    nm.value=r.name; hint.style.display='block';
+    if(r.personType) setTypeUI(r.personType);
+    if(r.nameLocked){ nm.readOnly=true; hint.textContent='ชื่อยืนยันโดย Safety — แก้ไขได้โดย Safety เท่านั้น'; hint.style.color='#92400E'; }
+    else { nm.readOnly=false; hint.textContent='พบข้อมูล — ไม่ต้องกรอกชื่อ'; hint.style.color='#16A34A'; }
+  }).catch(function(){});
+  api('progress',{idCard:v}).then(drawSteps).catch(function(){});
+});
+
+function doLogin(){
+  var id=$('inId').value.trim(), nm=$('inName').value.trim();
+  if(id.length!==13) return toast('กรอกเลขบัตร 13 หลัก');
+  var b=$('loginBtn'); b.disabled=true; b.textContent='กำลังตรวจสอบ...';
+
+  api('bootstrap',{idCard:id, name:nm, personType:U.personType, videoId:YT_ID}).then(function(r){
+    b.disabled=false; b.textContent='เข้าสู่ระบบ';
+    if(!nm && !(r.lookup&&r.lookup.found)) return toast('ไม่พบข้อมูล กรุณากรอกชื่อ');
+    U.idCard=id;
+    U.name = nm || (r.lookup && r.lookup.name) || '';
+    if(r.lookup && r.lookup.personType) U.personType=r.lookup.personType;
+    saveSession();
+    $('logoutBtn').style.display='block';
+    drawSteps(r.progress);
+    trackLoc('เข้าเรียน');
+    route(r);
+  }).catch(function(e){ b.disabled=false; b.textContent='เข้าสู่ระบบ'; toast(e.message); });
+}
+
+// ── routing ───────────────────────────────────
+function route(r){
+  var s=r.status||{}, doc=r.doc||{};
+  if(s.status==='ERROR') return toast(s.message);
+  if(s.status==='READY_FOR_EXAM') return show('scReady');
+  if(s.status==='NEED_DOCS')      return openUpload(doc,true);
+  if(s.status==='NEED_REUPLOAD')  return openUpload(doc,false,s);
+  if(s.status==='CERTIFIED')      return openCert(s,doc);
+  if(s.status==='IN_PROGRESS'){
+    $('nResume').style.display='block';
+    $('nResume').innerHTML='ดำเนินการต่อ — เรียนไปแล้ว <b>'+fmt(s.lastPosition)+'</b>';
+    return openVideo(s.lastPosition);
+  }
+  if(s.status==='VIDEO_EXPIRED'||s.status==='CERT_EXPIRED'){
+    $('nExpired').style.display='block'; $('nExpired').textContent=s.message;
+  }
+  openVideo(0);
+}
+function refreshStatus(){
+  api('bootstrap',{idCard:U.idCard, personType:U.personType, videoId:YT_ID}).then(function(r){
+    drawSteps(r.progress); route(r);
+  }).catch(function(e){ toast(e.message); });
+}
+
+// ── video ─────────────────────────────────────
+function onYouTubeIframeAPIReady(){}
+
+function openVideo(from){
+  secs=from||0; done=false; watched={};
+  for(var i=0;i<secs;i++) watched[i]=1;
+  show('scVideo');
+  $('ytWrap').innerHTML='<div id="ytPlayer"></div>';
+  yt = new YT.Player('ytPlayer',{
+    videoId:YT_ID,
+    playerVars:{autoplay:1,controls:1,modestbranding:1,rel:0,playsinline:1,cc_load_policy:0,iv_load_policy:3,start:Math.floor(secs)},
+    events:{
+      onReady:function(){ var d=yt.getDuration&&yt.getDuration(); if(d>0){dur=Math.floor(d); paint();} },
+      onStateChange:function(ev){
+        if(ev.data===YT.PlayerState.ENDED && !done) return finish();
+        playing = (ev.data===YT.PlayerState.PLAYING);
+        $('bWatch').classList.toggle('on', playing);
+        $('bPause').classList.toggle('on', !playing);
+      }
+    }
+  });
+  startCount(); startSave(); paint();
+}
+
+function startCount(){
+  clearInterval(tCount);
+  tCount=setInterval(function(){
+    if(!visible||done||!playing||!yt||!yt.getCurrentTime) return;
+    watched[Math.floor(yt.getCurrentTime()||0)]=1;
+    var n=0; for(var k in watched) n++;
+    secs=n;
+    var d=yt.getDuration&&yt.getDuration(); if(d>0) dur=Math.floor(d);
+    paint();
+    if(secs/dur>=DONE_AT && !done) finish();
+  },1000);
+}
+function paint(){
+  var p=Math.min(secs/dur*100,100);
+  $('pFill').style.width=p+'%';
+  $('pPct').textContent=Math.floor(p)+'%';
+  $('tDisp').textContent=fmt(secs)+' / '+fmt(dur);
+}
+function startSave(){ clearInterval(tSave); tSave=setInterval(pushProgress,SAVE_EVERY*1000); }
+function pushProgress(){
+  if(done||!U.idCard) return;
+  $('bSave').classList.add('on');
+  api('saveProgress',{idCard:U.idCard,name:U.name,videoId:YT_ID,position:Math.floor(secs),duration:dur,completed:false,personType:U.personType})
+    .then(function(){ $('bSave').classList.remove('on'); })
+    .catch(function(){ $('bSave').classList.remove('on'); });
+}
+function finish(){
+  if(done) return; done=true;
+  clearInterval(tCount); clearInterval(tSave);
+  $('pFill').style.width='100%'; $('pPct').textContent='100%';
+  $('bWatch').classList.remove('on'); $('bPause').classList.remove('on');
+  $('vDone').style.display='block';
+  api('saveProgress',{idCard:U.idCard,name:U.name,videoId:YT_ID,position:dur,duration:dur,completed:true,personType:U.personType})
+    .then(function(){ toast('บันทึกเรียบร้อย!'); refreshSteps(); }).catch(function(){});
+}
+function reviewVideo(){
+  show('scVideo'); done=true;
+  $('ytWrap').innerHTML='<div id="ytPlayer"></div>';
+  yt=new YT.Player('ytPlayer',{videoId:YT_ID,playerVars:{autoplay:1,controls:1,rel:0,playsinline:1}});
+  $('pFill').style.width='100%'; $('pPct').textContent='100%';
+  $('tDisp').textContent='โหมดทบทวน';
+  $('vDone').style.display='block';
+}
+document.addEventListener('visibilitychange',function(){
+  visible=!document.hidden;
+  $('bWatch').classList.toggle('on', visible&&playing);
+  $('bPause').classList.toggle('on', !(visible&&playing));
+  if(document.hidden) pushProgress();
+});
+
+// ── selfie + quiz ─────────────────────────────
+function goQuiz(){
+  if(isMobile){ show('scSelfie'); $('sCapture').style.display='block'; }
+  else { tookSelfie=false; loadQuiz(); }
+}
+function onSelfie(inp){
+  var f=inp.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(e){
+    var im=new Image();
+    im.onload=function(){
+      var c=$('sCanvas'); c.width=480; c.height=480;
+      var s=Math.min(im.width,im.height);
+      c.getContext('2d').drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,480,480);
+      var u=c.toDataURL('image/jpeg',.7);
+      selfieB64=u.split(',')[1];
+      $('sRing').innerHTML='<img src="'+u+'">';
+      $('sCapture').style.display='none'; $('sOk').style.display='flex'; $('sRetake').style.display='flex';
+    };
+    im.src=e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
+function retakeSelfie(){
+  selfieB64=null; $('sRing').innerHTML='🤳'; $('sInput').value='';
+  $('sCapture').style.display='block'; $('sOk').style.display='none'; $('sRetake').style.display='none';
+}
+function confirmSelfie(){
+  if(selfieB64){
+    api('upload',{idCard:U.idCard,docType:'selfie',data:selfieB64,mimeType:'image/jpeg'}).catch(function(){});
+    api('upload',{idCard:U.idCard,docType:'photo', data:selfieB64,mimeType:'image/jpeg'})
+      .then(refreshSteps).catch(function(){});
+    tookSelfie=true;
+  }
+  loadQuiz();
+}
+function loadQuiz(){
+  show('scQuiz'); $('qArea').innerHTML='<div class="load"><div class="spin"></div>กำลังสุ่มข้อสอบ...</div>';
+  api('quizGet').then(function(r){
+    if(!r.success) { toast(r.error); return show('scReady'); }
+    quiz=r.questions; qid=r.quizId; ans=new Array(r.totalQuestions).fill(0); qi=0;
+    $('qPass').textContent='ผ่าน '+r.passPercent+'%';
+    renderQ();
+  }).catch(function(e){ toast(e.message); show('scReady'); });
+}
+function renderQ(){
+  var q=quiz[qi], n=quiz.length;
+  $('qProg').textContent='ข้อ '+(qi+1)+' / '+n;
+  $('qBar').style.width=((qi+1)/n*100)+'%';
+  var h='<div class="qcard"><span class="qnum">ข้อที่ '+(qi+1)+'</span><div class="qtext">'+esc(q.question)+'</div>';
+  for(var i=0;i<q.choices.length;i++)
+    h+='<div class="ch'+(ans[qi]===i+1?' on':'')+'" onclick="pick('+(i+1)+')"><div class="dot"></div><span>'+esc(q.choices[i])+'</span></div>';
+  h+='</div>';
+  $('qArea').innerHTML=h;
+  $('qPrev').disabled=(qi===0);
+  var last=(qi===n-1);
+  $('qNext').textContent=last?'ส่งคำตอบ':'ถัดไป →';
+  $('qNext').onclick=last?submitQuiz:nextQ;
+}
+function pick(n){ ans[qi]=n; renderQ(); }
+function nextQ(){ if(!ans[qi]) return toast('กรุณาเลือกคำตอบ'); if(qi<quiz.length-1){qi++;renderQ();} }
+function prevQ(){ if(qi>0){qi--;renderQ();} }
+function submitQuiz(){
+  for(var i=0;i<ans.length;i++) if(!ans[i]){ qi=i; renderQ(); return toast('ยังไม่ตอบข้อ '+(i+1)); }
+  $('qArea').innerHTML='<div class="load"><div class="spin"></div>กำลังตรวจ...</div>';
+  api('quizSubmit',{quizId:qid,idCard:U.idCard,name:U.name,answers:ans}).then(function(r){
+    if(!r.success){ toast(r.error); return renderQ(); }
+    refreshSteps();
+    var h='<div class="card" style="text-align:center"><div class="big-ic '+(r.passed?'ic-g':'ic-r')+'">'+(r.passed?'✓':'✕')+'</div>';
+    h+='<h2 style="color:'+(r.passed?'var(--green)':'var(--wrong)')+'">'+(r.passed?'สอบผ่าน!':'ไม่ผ่าน')+'</h2>';
+    h+='<div class="score" style="color:'+(r.passed?'var(--green)':'var(--wrong)')+'">'+r.score+'%</div>';
+    h+='<div class="detail"><div><span class="k">ตอบถูก</span><span>'+r.correct+'/'+r.total+'</span></div>';
+    h+='<div><span class="k">เกณฑ์ผ่าน</span><span>'+r.passPercent+'%</span></div></div>';
+    if(r.passed) h+='<p class="sub">ยินดีด้วย! กรุณาส่งเอกสารเพื่อดำเนินการต่อ</p><button class="btn b-green" onclick="afterPass()">ไปส่งเอกสาร →</button>';
+    else h+='<p class="sub">สอบใหม่ได้ไม่จำกัดครั้ง</p><button class="btn b-red" onclick="goQuiz()">สอบใหม่</button><button class="btn b-ghost" onclick="reviewVideo()">กลับดู Video</button>';
+    h+='</div>';
+    $('rArea').innerHTML=h; show('scResult');
+  }).catch(function(e){ toast(e.message); renderQ(); });
+}
+function afterPass(){
+  api('docStatus',{idCard:U.idCard}).then(function(d){ openUpload(d||{}, true); }).catch(function(){ openUpload({},true); });
+}
+
+// ── upload ────────────────────────────────────
+function openUpload(doc, fresh, st){
+  reup = !fresh;
+  files={};
+  $('uName').textContent=U.name; $('uId').textContent=U.idCard; $('uType').textContent=U.personType;
+  if(reup){
+    $('gTrans').style.display='none'; $('gPhone').style.display='none';
+    $('uIcon').className='big-ic ic-r'; $('uIcon').textContent='!';
+    $('uTitle').textContent='เอกสารไม่ผ่าน'; $('uTitle').style.color='var(--wrong)';
+    $('uDesc').innerHTML='เหตุผล: <b style="color:var(--wrong)">'+esc((st&&st.safetyNote)||'')+'</b><br>กรุณาแนบเฉพาะเอกสารที่ไม่ผ่าน';
+    docSt={idCard:st.idCardStatus,license:st.licenseStatus,photo:st.photoStatus,medical:st.medicalStatus,drugTest:st.drugStatus};
+  } else {
+    $('gTrans').style.display=''; $('gPhone').style.display='';
+    $('uIcon').className='big-ic ic-g'; $('uIcon').textContent='✓';
+    $('uTitle').textContent='สอบผ่านแล้ว!'; $('uTitle').style.color='var(--red)';
+    $('uDesc').textContent='กรุณาส่งเอกสารเพื่อดำเนินการต่อ';
+    docSt={};
+  }
+  if(doc && doc.transporter) $('inTrans').value=doc.transporter;
+  if(doc && doc.phone) $('inPhone').value=doc.phone;
+
+  var follower = (U.personType==='ผู้ติดตาม');
+  var h='';
+  DOCS.forEach(function(d,i){
+    var need = follower ? (d.k==='idCard'||d.k==='photo') : true;
+    if(!need){ files[d.k]='SKIP'; return; }
+
+    var st2 = docSt[d.k];
+    if(reup){
+      if(!st2 || st2==='-'){ files[d.k]='SKIP'; return; }
+      if(st2==='ผ่าน'){ h+='<div class="up"><div class="statbox s-pass">✓ '+d.t+' — ผ่านแล้ว</div></div>'; files[d.k]='SKIP'; return; }
+      if(st2==='รอตรวจ'){ h+='<div class="up"><div class="statbox s-wait">'+d.t+' — รอ Safety ตรวจ</div></div>'; files[d.k]='SKIP'; return; }
+    }
+    if(!reup && d.k==='photo' && tookSelfie){
+      h+='<div class="up"><div class="statbox s-pass">✓ รูปหน้าตรง — ใช้รูป Selfie ตอนสอบ</div></div>';
+      files[d.k]='SKIP'; return;
+    }
+    h+='<div class="up"><div class="up-lbl">'+d.t+'<i>*จำเป็น</i></div>'
+     + '<div class="zone" id="z'+i+'"><div class="ic">'+(d.pdf?'📄':'📷')+'</div>'
+     + '<div class="ht">'+(d.pdf?'ถ่ายรูป เลือกไฟล์ หรือแนบ PDF':'กดเพื่อถ่ายรูป หรือเลือกไฟล์')+'</div>'
+     + '<div class="fn" id="f'+i+'"></div>'
+     + '<input type="file" accept="'+(d.pdf?'image/*,application/pdf':'image/*')+'" onchange="pickFile(this,\''+d.k+'\','+i+')">'
+     + '<img id="p'+i+'"><div class="pdf" id="d'+i+'"></div></div></div>';
+  });
+  $('upList').innerHTML=h;
+  show('scUpload');
+}
+
+function pickFile(inp,key,i){
+  var f=inp.files[0]; if(!f) return;
+  var isPdf = f.type==='application/pdf' || /\.pdf$/i.test(f.name);
+  if(isPdf && f.size > MAX_MB*1024*1024){ inp.value=''; return toast('PDF ใหญ่เกิน '+MAX_MB+' MB'); }
+  $('z'+i).classList.add('has'); $('f'+i).textContent='กำลังประมวลผล...';
+  var rd=new FileReader();
+  if(isPdf){
+    rd.onload=function(e){
+      files[key]={data:e.target.result.split(',')[1],mimeType:'application/pdf'};
+      $('p'+i).style.display='none';
+      $('d'+i).textContent='PDF · '+(f.size/1048576).toFixed(2)+' MB'; $('d'+i).style.display='block';
+      $('f'+i).textContent='✓ '+f.name;
+    };
+    return rd.readAsDataURL(f);
+  }
+  rd.onload=function(e){
+    var im=new Image();
+    im.onload=function(){
+      var w=im.width,h=im.height;
+      if(w>1024){h=h*1024/w;w=1024;} if(h>768){w=w*768/h;h=768;}
+      var c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(im,0,0,w,h);
+      var u=c.toDataURL('image/jpeg',.7);
+      files[key]={data:u.split(',')[1],mimeType:'image/jpeg'};
+      $('p'+i).src=u; $('p'+i).style.display='block'; $('d'+i).style.display='none';
+      $('f'+i).textContent='✓ '+f.name;
+    };
+    im.onerror=function(){ $('f'+i).textContent='ไฟล์นี้เปิดไม่ได้'; };
+    im.src=e.target.result;
+  };
+  rd.readAsDataURL(f);
+}
+
+function submitDocs(){
+  if(submitting) return;
+  var trans=$('inTrans').value.trim();
+  if(!reup && !trans) return toast('กรุณากรอกชื่อบริษัทผู้ขนส่ง');
+  var todo=[];
+  for(var i=0;i<DOCS.length;i++){
+    var d=DOCS[i];
+    if(files[d.k]==='SKIP') continue;
+    if(!files[d.k]) return toast('กรุณาแนบ'+d.t);
+    todo.push(d);
+  }
+  submitting=true;
+  var b=$('uBtn'); b.disabled=true; b.textContent='กำลังส่ง...';
+  $('uProg').style.display='block';
+
+  var n=0;
+  function next(){
+    if(n>=todo.length){
+      $('uMsg').textContent='กำลังบันทึก...'; $('uFill').style.width='95%';
+      return api('finalize',{idCard:U.idCard,name:U.name,transporter:trans,phone:$('inPhone').value.trim(),personType:U.personType})
+        .then(function(r){
+          if(!r.success) throw new Error(r.error);
+          $('uFill').style.width='100%';
+          refreshSteps(); setTimeout(function(){ show('scDone'); }, 400);
+        }).catch(fail);
+    }
+    var d=todo[n];
+    $('uMsg').textContent='กำลังอัพโหลด '+d.t+'... ('+(n+1)+'/'+todo.length+')';
+    $('uFill').style.width=Math.round(8+(n/todo.length)*82)+'%';
+    api('upload',{idCard:U.idCard,docType:d.k,data:files[d.k].data,mimeType:files[d.k].mimeType})
+      .then(function(r){ if(!r.success) throw new Error(r.error); n++; next(); })
+      .catch(fail);
+  }
+  function fail(e){
+    submitting=false; b.disabled=false; b.textContent='ส่งเอกสาร';
+    $('uProg').style.display='none'; toast(e.message||'อัพโหลดไม่สำเร็จ');
+  }
+  next();
+}
+
+// ── certified ─────────────────────────────────
+function openCert(s,doc){
+  var ds=s.docStatus||'';
+  if(ds==='อนุมัติ' && s.expiryDate){
+    $('cExpBox').style.display='';
+    $('cExp').textContent=new Date(s.expiryDate).toLocaleDateString('th-TH');
+    $('cLeft').textContent=(s.daysLeft||0)+' วัน';
+    $('cLeft').style.color=(s.daysLeft<14)?'var(--wrong)':'var(--green)';
+  } else $('cExpBox').style.display='none';
+
+  var el=$('cDocSt');
+  if(ds==='อนุมัติ'){ el.textContent='เอกสารอนุมัติแล้ว'; el.style.color='var(--green)'; }
+  else if(ds==='รอตรวจ'){ el.textContent='รอ Safety ตรวจเอกสาร'; el.style.color='var(--amber)'; }
+  else if(ds==='ไม่ผ่าน'){ el.textContent='เอกสารไม่ผ่าน: '+(s.docNote||''); el.style.color='var(--wrong)'; }
+  else el.textContent='';
+
+  show('scCert');
+  if(ds!=='อนุมัติ'){ $('cCardBtn').style.display='none'; $('cardBox').style.display='none'; return; }
+
+  $('cCardBtn').style.display='flex';
+  $('dcName').textContent=U.name; $('dcId').textContent=U.idCard;
+  $('dcType').textContent=(U.personType==='ผู้ติดตาม')?'ผู้ติดตาม':'ทั่วไป';
+  if(s.expiryDate) $('dcExp').textContent=new Date(s.expiryDate).toLocaleDateString('th-TH');
+  if(s.verifiedBy) $('dcVer').textContent=s.verifiedBy;
+  if(doc.transporter) $('dcCo').textContent=doc.transporter;
+  if(doc.trainingDate) $('dcTrain').textContent=doc.trainingDate;
+  if(doc.phone) $('dcPhone').textContent=doc.phone;
+  if(s.photoUrl && s.photoUrl.indexOf('http')===0){
+    var m=s.photoUrl.match(/\/d\/([^\/]+)/);
+    if(m) $('dcPhoto').innerHTML='<img src="https://drive.google.com/thumbnail?id='+m[1]+'&sz=w300">';
+  }
+  var q=['INSEE DRIVER CARD','---','Name: '+U.name,'ID: '+U.idCard,'Type: '+U.personType,
+         'Transporter: '+(doc.transporter||'-'),'Phone: '+(doc.phone||'-'),
+         'Expiry: '+(s.expiryDate?new Date(s.expiryDate).toLocaleDateString('th-TH'):'-'),'Status: CERTIFIED'];
+  $('dcQr').innerHTML='<img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(q.join('\n'))+'">';
+}
+function toggleCard(){
+  var b=$('cardBox');
+  b.style.display = b.style.display==='none' ? 'block' : 'none';
+}
+function saveCard(){
+  html2canvas($('dCard'),{scale:3,useCORS:true,backgroundColor:'#fff'}).then(function(c){
+    var a=document.createElement('a');
+    a.download='INSEE_Card_'+U.idCard+'.png'; a.href=c.toDataURL('image/png'); a.click();
+    toast('บันทึกรูปบัตรแล้ว');
+  }).catch(function(e){ toast('สร้างรูปไม่ได้: '+e.message); });
+}
+function renewStart(){
+  if(!confirm('ยืนยันต่ออายุ?\n\nระบบจะลบสถิติเรียน ผลสอบ และเอกสารเก่า\nต้องเรียน + สอบ + แนบเอกสารใหม่ทั้งหมด')) return;
+  toast('กำลังเริ่มต้นใหม่...');
+  api('renew',{idCard:U.idCard,videoId:YT_ID}).then(function(){
+    tookSelfie=false; refreshSteps(); openVideo(0);
+  }).catch(function(e){ toast(e.message); });
+}
+
+// ── location ──────────────────────────────────
+function trackLoc(act){
+  var ua=navigator.userAgent, dev='Unknown', os='Unknown', br='Unknown';
+  if(/iPhone/.test(ua))dev='iPhone'; else if(/iPad/.test(ua))dev='iPad';
+  else if(/Samsung/i.test(ua))dev='Samsung'; else if(/Huawei/i.test(ua))dev='Huawei';
+  else if(/OPPO/i.test(ua))dev='OPPO'; else if(/vivo/i.test(ua))dev='vivo';
+  else if(/Xiaomi|Redmi|POCO/i.test(ua))dev='Xiaomi';
+  else if(/Android/.test(ua))dev='Android'; else if(/Mac/.test(ua))dev='Mac';
+  else if(/Windows/.test(ua))dev='Windows PC';
+  if(/iPhone OS (\d+[_.\d]*)/.test(ua))os='iOS '+RegExp.$1.replace(/_/g,'.');
+  else if(/Android (\d+[.\d]*)/.test(ua))os='Android '+RegExp.$1;
+  else if(/Mac OS X/.test(ua))os='macOS'; else if(/Windows NT/.test(ua))os='Windows';
+  if(/CriOS/.test(ua))br='Chrome (iOS)'; else if(/Line\//.test(ua))br='LINE';
+  else if(/Chrome\//.test(ua))br='Chrome'; else if(/Safari\//.test(ua))br='Safari';
+  else if(/Firefox/.test(ua))br='Firefox';
+
+  var base={idCard:U.idCard,name:U.name,action:act,device:dev,os:os,browser:br,screen:screen.width+'x'+screen.height};
+  function send(lat,lng,acc){ base.lat=lat||''; base.lng=lng||''; base.accuracy=acc||''; api('logLocation',base).catch(function(){}); }
+  if(navigator.geolocation)
+    navigator.geolocation.getCurrentPosition(
+      function(p){ send(p.coords.latitude,p.coords.longitude,p.coords.accuracy); },
+      function(){ send(); }, {enableHighAccuracy:true,timeout:10000});
+  else send();
+}
+
+// ── boot ──────────────────────────────────────
+window.addEventListener('beforeunload',function(){ if(!done&&secs>0) pushProgress(); });
+
+(function(){
+  function ready(){ $('boot').classList.add('hide'); }
+  var saved=null;
+  try{ saved=JSON.parse(sessionStorage.getItem('insee')||'null'); }catch(e){}
+  if(saved && saved.idCard && saved.idCard.length===13){
+    U=saved; $('logoutBtn').style.display='block';
+    api('bootstrap',{idCard:U.idCard,personType:U.personType,videoId:YT_ID}).then(function(r){
+      drawSteps(r.progress); route(r); ready();
+    }).catch(function(){ ready(); });
+  } else {
+    setTimeout(ready,300);
+  }
+})();
+</script>
+</body>
+</html>
