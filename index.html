@@ -353,7 +353,7 @@ var API_URL = 'https://script.google.com/macros/s/AKfycbxwoUZwdSGD0AzJCuT67IOsTa
 var YT_ID   = 'oji0r8ko2Ns';
 // ════════════════════════════════════════════════
 
-var SAVE_EVERY = 15, DONE_AT = 0.985, MAX_MB = 8;
+var SAVE_EVERY = 45, DONE_AT = 0.985, MAX_MB = 8;
 var DOCS = [
   {k:'idCard',   t:'บัตรประชาชน',      pdf:true},
   {k:'license',  t:'ใบขับขี่',          pdf:true},
@@ -410,7 +410,15 @@ function drawSteps(r){
   else if(r.note) h+='<div class="step-summary '+(r.noteType||'info')+'">'+esc(r.note)+'</div>';
   w.innerHTML=h;
 }
-function refreshSteps(){ if(U.idCard) api('progress',{idCard:U.idCard}).then(drawSteps).catch(function(){}); }
+var _cache = {t:0, data:null};   // ★ cache 60 วิ กัน call ซ้ำ
+function refreshSteps(force){
+  if(!U.idCard) return;
+  var now=Date.now();
+  if(!force && _cache.data && now-_cache.t < 60000){ drawSteps(_cache.data); return; }
+  api('progress',{idCard:U.idCard}).then(function(r){
+    _cache={t:Date.now(), data:r}; drawSteps(r);
+  }).catch(function(){});
+}
 
 // ── login ─────────────────────────────────────
 function selType(b){
@@ -427,17 +435,28 @@ function setTypeUI(v){
   }
 }
 
+// ★ ยิง bootstrap ครั้งเดียวตอนกรอกครบ 13 หลัก แล้วเก็บผลไว้
+var _pre = {id:'', data:null, loading:false};
+
 $('inId').addEventListener('input', function(){
   var v=this.value.trim(), hint=$('hint'), nm=$('inName');
-  if(v.length!==13){ hint.style.display='none'; nm.readOnly=false; return; }
-  api('lookup',{idCard:v}).then(function(r){
-    if(!r.found){ hint.style.display='none'; nm.readOnly=false; return; }
-    nm.value=r.name; hint.style.display='block';
-    if(r.personType) setTypeUI(r.personType);
-    if(r.nameLocked){ nm.readOnly=true; hint.textContent='ชื่อยืนยันโดย Safety — แก้ไขได้โดย Safety เท่านั้น'; hint.style.color='#92400E'; }
+  if(v.length!==13){ hint.style.display='none'; nm.readOnly=false; _pre={id:'',data:null,loading:false}; return; }
+  if(_pre.id===v) return;
+
+  _pre={id:v, data:null, loading:true};
+  $('stepBarWrap').innerHTML='<div class="load" style="padding:16px"><div class="spin"></div></div>';
+
+  api('bootstrap',{idCard:v, personType:U.personType, videoId:YT_ID}).then(function(r){
+    if($('inId').value.trim()!==v) return;      // พิมพ์เปลี่ยนไปแล้ว ทิ้งผลนี้
+    _pre={id:v, data:r, loading:false};
+    drawSteps(r.progress);
+    var L=r.lookup||{};
+    if(!L.found){ hint.style.display='none'; nm.readOnly=false; return; }
+    nm.value=L.name; hint.style.display='block';
+    if(L.personType) setTypeUI(L.personType);
+    if(L.nameLocked){ nm.readOnly=true; hint.textContent='ชื่อยืนยันโดย Safety — แก้ไขได้โดย Safety เท่านั้น'; hint.style.color='#92400E'; }
     else { nm.readOnly=false; hint.textContent='พบข้อมูล — ไม่ต้องกรอกชื่อ'; hint.style.color='#16A34A'; }
-  }).catch(function(){});
-  api('progress',{idCard:v}).then(drawSteps).catch(function(){});
+  }).catch(function(){ _pre.loading=false; $('stepBarWrap').innerHTML=''; });
 });
 
 function doLogin(){
@@ -445,16 +464,28 @@ function doLogin(){
   if(id.length!==13) return toast('กรอกเลขบัตร 13 หลัก');
   var b=$('loginBtn'); b.disabled=true; b.textContent='กำลังตรวจสอบ...';
 
-  api('bootstrap',{idCard:id, name:nm, personType:U.personType, videoId:YT_ID}).then(function(r){
+  // ★ ถ้า preload ไว้แล้ว + ชื่อ/ประเภทไม่เปลี่ยน → ใช้ได้เลย ไม่ต้องยิงซ้ำ
+  var L=_pre.data && _pre.data.lookup;
+  var canReuse = _pre.id===id && _pre.data && L && L.found
+              && (!nm || nm===L.name) && U.personType===(L.personType||U.personType);
+  var call = canReuse
+    ? Promise.resolve(_pre.data)
+    : api('bootstrap',{idCard:id, name:nm, personType:U.personType, videoId:YT_ID});
+
+  if(!canReuse) $('stepBarWrap').innerHTML='<div class="load" style="padding:20px"><div class="spin"></div></div>';
+
+  call.then(function(r){
     b.disabled=false; b.textContent='เข้าสู่ระบบ';
     if(!nm && !(r.lookup&&r.lookup.found)) return toast('ไม่พบข้อมูล กรุณากรอกชื่อ');
     U.idCard=id;
     U.name = nm || (r.lookup && r.lookup.name) || '';
     if(r.lookup && r.lookup.personType) U.personType=r.lookup.personType;
+    if(r.lookup && r.lookup.name) U.name=r.lookup.name;
     saveSession();
     $('logoutBtn').style.display='block';
+    _cache={t:Date.now(), data:r.progress};
     drawSteps(r.progress);
-    trackLoc('เข้าเรียน');
+    setTimeout(function(){ trackLoc('เข้าเรียน'); }, 1500);   // ★ ไม่ให้แย่ง bandwidth ตอนโหลด
     route(r);
   }).catch(function(e){ b.disabled=false; b.textContent='เข้าสู่ระบบ'; toast(e.message); });
 }
@@ -504,7 +535,7 @@ function openVideo(from){
       }
     }
   });
-  startCount(); startSave(); paint();
+  startCount(); startSave(); paint(); pushProgress();
 }
 
 function startCount(){
@@ -540,7 +571,7 @@ function finish(){
   $('bWatch').classList.remove('on'); $('bPause').classList.remove('on');
   $('vDone').style.display='block';
   api('saveProgress',{idCard:U.idCard,name:U.name,videoId:YT_ID,position:dur,duration:dur,completed:true,personType:U.personType})
-    .then(function(){ toast('บันทึกเรียบร้อย!'); refreshSteps(); }).catch(function(){});
+    .then(function(){ toast('บันทึกเรียบร้อย!'); refreshSteps(true); }).catch(function(){});
 }
 function reviewVideo(){
   show('scVideo'); done=true;
@@ -588,7 +619,7 @@ function confirmSelfie(){
   if(selfieB64){
     api('upload',{idCard:U.idCard,docType:'selfie',data:selfieB64,mimeType:'image/jpeg'}).catch(function(){});
     api('upload',{idCard:U.idCard,docType:'photo', data:selfieB64,mimeType:'image/jpeg'})
-      .then(refreshSteps).catch(function(){});
+      .then(function(){refreshSteps(true);}).catch(function(){});
     tookSelfie=true;
   }
   loadQuiz();
@@ -624,7 +655,7 @@ function submitQuiz(){
   $('qArea').innerHTML='<div class="load"><div class="spin"></div>กำลังตรวจ...</div>';
   api('quizSubmit',{quizId:qid,idCard:U.idCard,name:U.name,answers:ans}).then(function(r){
     if(!r.success){ toast(r.error); return renderQ(); }
-    refreshSteps();
+    refreshSteps(true);
     var h='<div class="card" style="text-align:center"><div class="big-ic '+(r.passed?'ic-g':'ic-r')+'">'+(r.passed?'✓':'✕')+'</div>';
     h+='<h2 style="color:'+(r.passed?'var(--green)':'var(--wrong)')+'">'+(r.passed?'สอบผ่าน!':'ไม่ผ่าน')+'</h2>';
     h+='<div class="score" style="color:'+(r.passed?'var(--green)':'var(--wrong)')+'">'+r.score+'%</div>';
@@ -744,7 +775,7 @@ function submitDocs(){
         .then(function(r){
           if(!r.success) throw new Error(r.error);
           $('uFill').style.width='100%';
-          refreshSteps(); setTimeout(function(){ show('scDone'); }, 400);
+          refreshSteps(true); setTimeout(function(){ show('scDone'); }, 400);
         }).catch(fail);
     }
     var d=todo[n];
@@ -812,7 +843,7 @@ function renewStart(){
   if(!confirm('ยืนยันต่ออายุ?\n\nระบบจะลบสถิติเรียน ผลสอบ และเอกสารเก่า\nต้องเรียน + สอบ + แนบเอกสารใหม่ทั้งหมด')) return;
   toast('กำลังเริ่มต้นใหม่...');
   api('renew',{idCard:U.idCard,videoId:YT_ID}).then(function(){
-    tookSelfie=false; refreshSteps(); openVideo(0);
+    tookSelfie=false; refreshSteps(true); openVideo(0);
   }).catch(function(e){ toast(e.message); });
 }
 
@@ -851,7 +882,7 @@ window.addEventListener('beforeunload',function(){ if(!done&&secs>0) pushProgres
   if(saved && saved.idCard && saved.idCard.length===13){
     U=saved; $('logoutBtn').style.display='block';
     api('bootstrap',{idCard:U.idCard,personType:U.personType,videoId:YT_ID}).then(function(r){
-      drawSteps(r.progress); route(r); ready();
+      _cache={t:Date.now(),data:r.progress}; drawSteps(r.progress); route(r); ready();
     }).catch(function(){ ready(); });
   } else {
     setTimeout(ready,300);
