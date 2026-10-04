@@ -1,16 +1,17 @@
-// Renders index.html frame-by-frame with headless Chromium and encodes the MP4 (1920x1080, 30fps, AAC audio).
-// Usage: node tools/render.cjs [out.mp4] [workers]
+// Renders index.html frame-by-frame with headless Chromium and encodes the MP4 (1920x1080 or 1080x1920, 30fps, AAC audio).
+// Usage: node tools/render.cjs [out.mp4] [workers] [v]   (v = vertical 1080x1920 for TikTok/Reels)
 const {chromium}=require('/opt/node22/lib/node_modules/playwright');
 const {spawn,execFileSync}=require('child_process');
 const path=require('path'),fs=require('fs'),os=require('os');
 const ROOT=path.resolve(__dirname,'..');
 const OUT=path.resolve(process.argv[2]||path.join(ROOT,'ampaktai-line-order.mp4'));
 const W=+(process.argv[3]||4),FPS=30;
+const VERT=process.argv[4]==='v';const VW=VERT?1080:1920,VH=VERT?1920:1080;
 const TMP=fs.mkdtempSync(path.join(process.env.TMPDIR||os.tmpdir(),'ampaktai-'));
 (async()=>{
   const browser=await chromium.launch();
-  const open=async()=>{const p=await browser.newPage({viewport:{width:1920,height:1080}});p.on('pageerror',e=>console.error('page error:',e.message));
-    await p.goto('file://'+path.join(ROOT,'index.html')+'?render');await p.evaluate(()=>window.ready);return p};
+  const open=async()=>{const p=await browser.newPage({viewport:{width:VW,height:VH}});p.on('pageerror',e=>console.error('page error:',e.message));
+    await p.goto('file://'+path.join(ROOT,'index.html')+'?render'+(VERT?'&v':''));await p.evaluate(()=>window.ready);return p};
   const p0=await open();
   const {dur,sfx}=await p0.evaluate(()=>({dur:window.DURATION,sfx:window.SFX}));
   fs.writeFileSync(path.join(TMP,'cues.json'),JSON.stringify(sfx));

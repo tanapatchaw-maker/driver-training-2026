@@ -14,7 +14,7 @@
 html,body{background:#0d1a12;overflow:hidden;width:100%;height:100%}
 body{font-family:'Prompt','Noto Color Emoji',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
 #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:var(--cream);transform-origin:0 0}
-.scene{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;z-index:0}
+.scene{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;z-index:0}
 .abs{position:absolute}
 svg{display:block;overflow:visible}
 
@@ -485,8 +485,187 @@ const S={ // scene windows
 /* =====================================================================
    Build DOM
    ===================================================================== */
-const stage=$('#stage');
-function scene(id,html,bg){const d=document.createElement('section');d.className='scene';d.id=id;d.innerHTML=html;if(bg)d.style.background=bg;stage.appendChild(d);return d}
+/* =====================================================================
+   Layout: landscape 1920x1080 (default) or vertical 1080x1920 (?v, TikTok/Reels)
+   ===================================================================== */
+const VERT=/[?&]v(&|=|$)/.test(location.search);
+const LY=VERT?{
+  W:1080,H:1920,
+  s2z:{cx:540,cy:670,tx:540,ty:880,sc:1300/920},
+  panel:{x:0,y:500}, ok:[540,710], w7:[540,710], w8:[540,1000], w9:[540,960], w10:[540,960],
+  fly:{x0:300,y0:1270,x1:460,y1:1230,base:[300,1270]}, drift:60,
+  rider9x:-700, bag9:{x0:90,y0:1500,x1:720,y1:1230,base:[0,0]}, bills:{dx:-140,dy:215},
+  prog:[[190,1500],[190,960]], tkS:.85
+}:{
+  W:1920,H:1080,
+  s2z:{cx:1300,cy:540,tx:960,ty:540,sc:1040/920},
+  panel:{x:700,y:0}, ok:[960,430], w7:[960,430], w8:[1300,600], w9:[960,540], w10:[960,540],
+  fly:{x0:300,y0:640,x1:640,y1:600,base:[300,640]}, drift:140,
+  rider9x:-900, bag9:{x0:390,y0:560,x1:1370,y1:700,base:[700,600]}, bills:{dx:-430,dy:0},
+  prog:[[560,905],[1190,830]], tkS:1
+};
+const steamBg='radial-gradient(rgba(255,255,255,.7),rgba(255,255,255,0) 70%)';
+/* vertical scene markup (same element ids as landscape, so one render engine drives both) */
+const VS={
+s1:()=>`
+  <div class="abs" id="s1bg" style="left:0;top:0;width:1080px;height:1920px;background:linear-gradient(#FFD9A8,#FFEFD6 45%,#FFE3BA);transform-origin:540px 1230px">
+    <div class="abs" id="s1rest" style="left:-460px;top:640px;width:2000px;height:1333px">${svgRestaurant(false)}</div>
+    <div class="abs" style="left:0;top:0;width:1080px;height:1920px;background:linear-gradient(180deg,rgba(255,246,230,.98) 0%,rgba(255,246,230,.93) 40%,rgba(255,246,230,.3) 62%,rgba(255,246,230,0) 80%)"></div>
+    ${Array.from({length:10},(_,i)=>`<div class="abs steam1" style="left:${60+i*100}px;top:1720px;width:${70+i%3*20}px;height:${70+i%3*20}px;border-radius:50%;background:${steamBg}"></div>`).join('')}
+    <div class="abs" id="s1logo" style="left:390px;top:150px;width:300px;height:300px;filter:drop-shadow(0 12px 24px rgba(0,0,0,.25))">${svgLogo()}</div>
+    <div class="abs" id="s1t1" style="left:0;width:1080px;top:480px;text-align:center;font-size:118px;font-weight:800;color:var(--dg);line-height:1.15">หิวเมื่อไหร่</div>
+    <div class="abs" id="s1t2" style="left:0;width:1080px;top:628px;text-align:center;font-size:66px;font-weight:700;color:var(--dg);line-height:1.2;white-space:nowrap">สั่ง<span style="color:#B5652E">แอมปักใต้</span>ผ่าน <span style="color:var(--line-d)">LINE</span> ได้เลย!</div>
+    <div class="abs" id="s1sub" style="left:0;width:1080px;top:760px;text-align:center"><span class="pill" style="font-size:40px;padding:16px 44px">สั่งง่าย • ส่งถึงที่ • เก็บเงินปลายทาง</span></div>
+    <div class="phone" id="s1phone" style="left:375px;top:900px;width:330px;height:660px;border-radius:48px;padding:10px">
+      <div class="scr" style="border-radius:40px">
+        <div class="oa" style="transform:scale(.5435);transform-origin:0 0;width:572px;height:1196px">
+          <div class="cover"></div><div class="lg">${svgLogo()}</div>
+          <div class="nm">ร้านอาหาร แอมปักใต้</div><div class="id">@ampaktai</div>
+          <div class="desc">อาหารปักษ์ใต้ ส่งตรงถึงคุณ</div>
+          <div class="btn">เพิ่มเพื่อน</div>
+        </div>
+      </div>
+    </div>
+    <div class="abs" id="s1line" style="left:225px;top:860px;width:180px;height:180px;filter:drop-shadow(0 12px 22px rgba(0,0,0,.25))">${svgLine()}</div>
+  </div>
+  <div class="abs" id="s1white" style="inset:0;background:#fff;opacity:0"></div>`,
+s2:H=>H
+  .replace('width:1920px;height:1080px;background:radial-gradient(circle at 30% 60%','width:1080px;height:1920px;background:radial-gradient(circle at 40% 80%')
+  .replace('left:-120px;top:420px;width:900px;height:900px','left:-200px;top:1180px;width:1000px;height:1000px')
+  .replace('id="s2cust" style="left:150px;top:300px;width:700px;height:840px"','id="s2cust" style="left:-40px;top:1170px;width:640px;height:768px"')
+  .replace('id="s2heart" style="left:560px;top:250px;','id="s2heart" style="left:520px;top:1180px;')
+  .replace('id="s2phone" style="left:1040px;top:80px;','id="s2phone" style="left:280px;top:210px;'),
+chat:H=>H
+  .replace('<div class="abs" style="left:0;top:0;width:1920px;height:1080px;opacity:.5;','<div class="abs" style="left:0;top:0;width:1080px;height:1920px;opacity:.5;')
+  .replace('id="cLeft" style="left:40px;top:270px;width:580px;height:780px;','id="cLeft" style="left:30px;top:1575px;width:500px;height:320px;')
+  .replace('<div class="abs" style="left:350px;top:60px;width:180px;height:220px;','<div class="abs" style="left:350px;top:90px;width:120px;height:150px;')
+  .replace('<div class="abs" style="left:440px;top:60px;width:10px;height:220px;','<div class="abs" style="left:405px;top:90px;width:10px;height:150px;')
+  .replace('<div class="abs" style="left:40px;top:120px;width:110px;height:110px;','<div class="abs" style="left:20px;top:200px;width:90px;height:90px;')
+  .replace('id="cCust" style="left:-10px;top:150px;width:600px;height:720px"','id="cCust" style="left:40px;top:-20px;width:420px;height:504px"')
+  .replace('<div class="label" style="left:30px;top:30px">👩','<div class="label" style="left:16px;top:16px;font-size:22px;padding:6px 18px">👩')
+  .replace('id="cCustTyping" style="left:330px;top:300px;','id="cCustTyping" style="left:300px;top:250px;')
+  .replace('id="cRight" style="left:1300px;top:270px;width:580px;height:780px;','id="cRight" style="left:550px;top:1575px;width:500px;height:320px;')
+  .replace('<div class="abs" style="left:360px;top:70px;width:160px;height:160px;opacity:.9">','<div class="abs" style="left:388px;top:16px;width:96px;height:96px;opacity:.9">')
+  .replace('id="cAdmin" style="left:-10px;top:60px;width:600px;height:720px"','id="cAdmin" style="left:40px;top:-40px;width:420px;height:504px"')
+  .replace('<div class="abs" style="left:0;top:720px;width:580px;height:60px;','<div class="abs" style="left:0;top:282px;width:500px;height:40px;')
+  .replace('<div class="label" style="left:30px;top:30px">👩‍💼','<div class="label" style="left:16px;top:16px;font-size:22px;padding:6px 18px">👩‍💼')
+  .replace('id="cAdmTyping" style="left:330px;top:300px;','id="cAdmTyping" style="left:300px;top:250px;')
+  .replace('id="cPhone" style="left:660px;top:20px;width:600px;height:1040px"','id="cPhone" style="left:240px;top:215px;width:600px;height:1040px;transform:scale(1.25);transform-origin:50% 0"')
+  .replaceAll('class="abs okp" style="left:960px;top:430px;','class="abs okp" style="left:540px;top:710px;')
+  .replace('id="okC" style="left:810px;top:280px"','id="okC" style="left:390px;top:560px"')
+  .replace('id="okT" style="left:0;width:1920px;top:620px;text-align:center;color:#fff;font-size:110px;font-weight:800;letter-spacing:6px">ORDER CONFIRMED','id="okT" style="left:0;width:1080px;top:910px;text-align:center;color:#fff;font-size:132px;font-weight:800;letter-spacing:6px;line-height:1.05">ORDER<br>CONFIRMED')
+  .replace('id="okT2" style="left:0;width:1920px;top:780px;text-align:center;color:#EFFFF4;font-size:50px;font-weight:600">ยืนยันออเดอร์เรียบร้อย • รวม 310 บาท','id="okT2" style="left:0;width:1080px;top:1230px;text-align:center;color:#EFFFF4;font-size:56px;font-weight:600;line-height:1.4">ยืนยันออเดอร์เรียบร้อย<br>รวม 310 บาท'),
+s7:()=>`
+  <div class="abs" style="inset:0;background:linear-gradient(#F3DFC0,#EBD2AE)"></div>
+  <div class="abs" style="left:0;top:640px;width:1080px;height:680px;background-color:#F7F1E6;background-image:linear-gradient(#e1d6c3 2px,transparent 2px),linear-gradient(90deg,#e1d6c3 2px,transparent 2px);background-size:80px 60px"></div>
+  <div class="abs" style="left:20px;top:600px;width:230px;height:18px;background:#7B4D2A;border-radius:6px"></div>
+  ${[30,100,170].map((x,i)=>`<div class="abs" style="left:${x}px;top:${530+(i%2)*10}px;width:${56+(i%3)*8}px;height:${70-(i%2)*10}px;border-radius:12px 12px 8px 8px;background:${['#E39A3B','#C9583C','#7BC77E'][i]};opacity:.85"></div>`).join('')}
+  <div class="abs" style="left:270px;top:410px;width:520px;height:210px;background:linear-gradient(#b8c0c8,#8f99a3);clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)"></div>
+  <div class="abs" style="left:250px;top:610px;width:560px;height:22px;background:#6d7680;border-radius:6px"></div>
+  <div class="abs" style="left:290px;top:632px;width:480px;height:60px;background:radial-gradient(ellipse at 50% 0,rgba(255,226,140,.8),rgba(255,226,140,0) 70%)"></div>
+  <div class="abs" style="left:730px;top:410px;width:330px;height:14px;background:#8f99a3;border-radius:7px"></div>
+  <div class="ticket" id="tk" style="left:745px;top:420px;transform-origin:0 0">
+    <h4>🧾 ออเดอร์ใหม่</h4>
+    <div class="ln" style="font-weight:600;color:#0F4D2E"><span>ลูกค้า: คุณมิ้น</span><span>COD</span></div>
+    <div class="ln"><span>ข้าวผัดปู</span><b>×1</b></div>
+    <div class="ln"><span>ต้มยำกุ้ง</span><b>×1</b></div>
+    <div class="ln"><span>น้ำเปล่า</span><b>×2</b></div>
+    <div class="ln" style="border-top:3px dashed #c9c0ad;margin-top:8px;padding-top:6px;font-weight:700;color:#0F4D2E"><span>เก็บเงินปลายทาง</span><span>310.-</span></div>
+  </div>
+  <div class="abs" id="chef" style="left:250px;top:640px;width:560px;height:672px">${svgChef()}</div>
+  <div class="abs" id="chefArm" style="left:660px;top:1108px;width:150px;height:46px;background:#F4F4F2;border-radius:23px;transform-origin:10px 50%;rotate:18deg"><div style="position:absolute;right:-6px;top:-2px;width:50px;height:50px;border-radius:50%;background:#F8D7BC"></div></div>
+  ${Array.from({length:9},(_,i)=>`<div class="abs flame" style="left:${410+i*30}px;top:1210px;width:46px;height:90px;border-radius:50% 50% 45% 45%/60% 60% 40% 40%;background:radial-gradient(ellipse at 50% 80%,#FFF3A8,#FFB13B 45%,rgba(255,90,20,.0) 75%);transform-origin:50% 100%"></div>`).join('')}
+  <div class="abs" id="wok" style="left:340px;top:1120px;width:460px;height:170px;transform-origin:420px 60px">
+    <svg viewBox="0 0 460 170" width="460" height="170">
+      <path d="M360,60 L455,30" stroke="#3a2a1d" stroke-width="22" stroke-linecap="round"/>
+      <path d="M20,60 Q190,250 370,60Z" fill="#2a2d31"/><path d="M20,60 L370,60" stroke="#4a4f55" stroke-width="10" stroke-linecap="round"/>
+    </svg>
+    ${Array.from({length:14},(_,i)=>`<div class="abs bit" style="left:${70+i*19}px;top:${46-(i%3)*4}px;width:${22+(i%4)*5}px;height:${18+(i%3)*5}px;border-radius:40%;background:${['#F2C46B','#E8A64B','#F7D98C','#7BC77E','#E77B4B'][i%5]}"></div>`).join('')}
+  </div>
+  ${Array.from({length:12},(_,i)=>`<div class="abs steam" style="left:${430+(i%6)*50}px;top:1090px;width:${90+(i%3)*30}px;height:${90+(i%3)*30}px;border-radius:50%;background:radial-gradient(rgba(255,255,255,.85),rgba(255,255,255,0) 68%)"></div>`).join('')}
+  <div class="abs" style="left:0;top:1308px;width:770px;height:612px;background:linear-gradient(#9aa3ab,#5d656d 3%,#3b4148)"></div>
+  <div class="abs" style="left:400px;top:1296px;width:300px;height:26px;border-radius:50%;background:#22262b"></div>
+  <div class="abs" style="left:740px;top:1300px;width:340px;height:620px;background:linear-gradient(#B07A4A,#8A5A35 5%,#7B4D2A)"></div>
+  <div class="abs" id="bagWrap" style="left:790px;top:990px;width:270px;height:312px">
+    <div class="abs" id="itBox" style="left:40px;top:-200px;width:150px;height:90px;border-radius:12px;background:#F4E7CF;border:4px solid #C9A877"><div style="margin:30px auto 0;width:70%;height:6px;background:#C9A877"></div></div>
+    <div class="abs" id="itBowl" style="left:110px;top:-200px;width:130px;height:80px;border-radius:12px 12px 50px 50px;background:#fff;border:4px solid #d9d9d9;box-shadow:inset 0 14px 0 #E77B4B"></div>
+    <div class="abs" id="itW1" style="left:60px;top:-200px;width:46px;height:120px;border-radius:14px 14px 10px 10px;background:linear-gradient(90deg,#BFE6FA,#E9F7FF,#BFE6FA);border:3px solid #8cc6e8"></div>
+    <div class="abs" id="itW2" style="left:160px;top:-200px;width:46px;height:120px;border-radius:14px 14px 10px 10px;background:linear-gradient(90deg,#BFE6FA,#E9F7FF,#BFE6FA);border:3px solid #8cc6e8"></div>
+    <div class="abs" id="bag" style="left:0;top:0;width:270px;height:312px;transform-origin:50% 100%">${svgBag()}</div>
+  </div>
+  <div class="stamp" id="stamp" style="left:690px;top:880px;opacity:0">พร้อมส่ง! ✓</div>`,
+s8:()=>`
+  <div class="abs" style="inset:0;background:linear-gradient(#BFE6F5,#E6F5F8 55%,#FFF1D6)"></div>
+  <div class="abs" id="far" style="left:0;top:630px;width:6000px;height:1080px">
+    ${Array.from({length:30},(_,i)=>`<div class="abs" style="left:${i*200}px;top:${520-(i*37%140)}px;width:180px;height:${400+(i*37%140)}px;background:${i%2?'#CFE0E6':'#DCE9EC'};border-radius:10px 10px 0 0"></div>`).join('')}
+  </div>
+  <div class="abs" id="mid" style="left:0;top:630px;width:9000px;height:1080px">
+    <div class="abs" style="left:-60px;top:330px;width:760px;height:507px">${svgRestaurant()}</div>
+    ${Array.from({length:20},(_,i)=>`<div class="abs" style="left:${900+i*420}px;top:560px;width:40px;height:270px;background:#8A5A35;border-radius:12px"></div>
+      <div class="abs" style="left:${820+i*420}px;top:460px;width:200px;height:200px;border-radius:50%;background:#3FA055"></div>
+      <div class="abs" style="left:${870+i*420}px;top:420px;width:150px;height:150px;border-radius:50%;background:#56B86A"></div>`).join('')}
+  </div>
+  <div class="abs" style="left:0;top:1460px;width:1080px;height:40px;background:#D9CBB4"></div>
+  <div class="abs" style="left:0;top:1500px;width:1080px;height:420px;background:#5B6168"></div>
+  <div class="abs" id="dash" style="left:0;top:1598px;width:4000px;height:14px;background:repeating-linear-gradient(90deg,#fff 0 90px,transparent 90px 180px)"></div>
+  <div class="abs" id="speed" style="left:0;top:0;width:1080px;height:1920px;opacity:0">
+    ${Array.from({length:8},(_,i)=>`<div class="abs" style="left:${40+i*37%200}px;top:${1190+i*42}px;width:${140+i*20}px;height:6px;border-radius:3px;background:rgba(255,255,255,.85)"></div>`).join('')}
+  </div>
+  <div class="abs" id="flybag" style="left:300px;top:1270px;width:130px;height:150px;opacity:0">${svgBag()}</div>
+  <div class="abs" id="rider8" style="left:380px;top:1100px;width:560px;height:440px">${svgRider(true)}</div>
+  <div class="mapcard" id="map" style="left:230px;top:400px">
+    <div class="mh"><span style="font-size:32px">📍</span>ติดตามการจัดส่ง</div>
+    ${svgMap()}
+    <div class="mf"><span>🏠 แอมปักใต้ → บ้านลูกค้า</span><b style="color:var(--line-d)">10–15 นาที</b></div>
+  </div>
+  <div class="label" id="mlA" style="left:248px;top:488px;font-size:22px;padding:6px 16px;opacity:0">แอมปักใต้</div>
+  <div class="label" id="mlB" style="left:620px;top:775px;font-size:22px;padding:6px 16px;opacity:0">บ้านลูกค้า</div>`,
+s9:()=>`
+  <div class="abs" style="inset:0;background:linear-gradient(#BFE6F5,#E8F6F2 60%)"></div>
+  <div class="abs" style="left:0;top:1390px;width:1080px;height:530px;background:#8CCB7E"></div>
+  <div class="abs" style="left:0;top:1470px;width:1080px;height:450px;background:#C9C1B2"></div>
+  <div class="abs" style="left:140px;top:870px;width:800px;height:640px">${svgHouse()}</div>
+  <div class="abs" id="cust9" style="left:370px;top:1130px;width:340px;height:408px">${svgCustomer(false)}</div>
+  <div class="abs" style="left:150px;top:1410px;width:780px;height:100px;background:#EADBC2;border-top:10px solid #CDB894"></div>
+  ${[180,880].map(x=>`<div class="abs" style="left:${x-60}px;top:1330px;width:120px;height:180px">
+     <div class="abs" style="left:10px;top:0;width:100px;height:100px;border-radius:50%;background:#3FA055"></div><div class="abs" style="left:0;top:60px;width:120px;height:120px;border-radius:50%;background:#2F8A45"></div></div>`).join('')}
+  <div class="abs" id="rider9" style="left:0;top:1440px;width:560px;height:440px">${svgRider(true)}</div>
+  <div class="abs" id="bag9" style="left:0;top:0;width:170px;height:196px;opacity:0">${svgBag()}</div>
+  ${[1,2,3].map(i=>`<div class="bill" id="bill${i}" style="left:520px;top:1395px;opacity:0">100</div>`).join('')}
+  <div class="bill" id="bill4" style="left:540px;top:1400px;opacity:0;width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#f0f0f0,#b9b9b9);border-color:#999;color:#555;font-size:24px">10</div>
+  <div class="cod" id="cod" style="left:320px;top:575px;opacity:0"><div class="a"><span style="font-size:44px">💵</span>เก็บเงินปลายทาง</div><div class="b">310 บาท ✓</div></div>
+  <div class="phone" id="p9" style="left:60px;top:200px;width:960px;height:340px;border-radius:44px;padding:10px;opacity:0">
+    <div class="scr" style="border-radius:36px">
+      <div class="chathead" style="top:0;height:76px"><div class="av" style="width:48px;height:48px">${svgLogo()}</div><div class="nm" style="font-size:24px">ร้านอาหาร แอมปักใต้</div></div>
+      <div class="chatarea" style="top:76px;bottom:0"><div class="chatlist" id="l9" style="padding-bottom:22px"></div></div>
+    </div>
+  </div>`,
+s10a:()=>`
+  <div class="abs" style="inset:0;background:radial-gradient(circle at 50% 35%,#FFF3DE,#F3D9B0)"></div>
+  <div class="abs" style="left:60px;top:300px;width:300px;height:360px;border-radius:30px;background:linear-gradient(#CDE7F5,#E9F5FB);border:14px solid #fff"><div style="position:absolute;left:129px;top:0;width:14px;height:100%;background:#fff"></div><div style="position:absolute;left:0;top:160px;width:100%;height:14px;background:#fff"></div></div>
+  <div class="abs" style="left:870px;top:1000px;width:120px;height:240px"><div style="position:absolute;left:10px;top:0;width:100px;height:150px;border-radius:50% 50% 40% 40%;background:#3FA055"></div><div style="position:absolute;left:20px;top:150px;width:80px;height:80px;background:#B5652E;border-radius:6px 6px 14px 14px"></div></div>
+  <div class="abs" id="cust10" style="left:190px;top:440px;width:700px;height:840px">${svgCustomer(false)}</div>
+  <div class="speech" id="yum" style="left:560px;top:330px;opacity:0;transform-origin:0 100%">อร่อยมาก! 😋</div>
+  <div class="abs" style="left:0;top:1250px;width:1080px;height:670px;background:linear-gradient(#B07A4A,#8A5A35 5%,#7B4D2A)"></div>
+  ${[['crabrice',45],['tomyum',390],['kaprao',735]].map(([f,x])=>`<div class="abs plate" style="left:${x}px;top:1170px;width:300px;height:300px;border-radius:50%;background:#fff;box-shadow:0 14px 26px rgba(0,0,0,.28);padding:22px">
+     <div style="width:100%;height:100%;border-radius:50%;background:url(assets/food-${f}.jpg) center/cover"></div></div>`).join('')}
+  ${Array.from({length:9},(_,i)=>`<div class="abs steam10" style="left:${100+(i%3)*345+(i%2)*40}px;top:1110px;width:120px;height:120px;border-radius:50%;background:radial-gradient(rgba(255,255,255,.8),rgba(255,255,255,0) 68%)"></div>`).join('')}
+  ${[[200,520],[860,600],[150,860],[880,880],[330,380],[760,460]].map(([x,y])=>`<div class="abs spark" style="left:${x}px;top:${y}px;font-size:50px;opacity:0">✨</div>`).join('')}
+  <div class="abs" style="left:0;width:1080px;top:1560px;text-align:center"><span style="display:inline-block;background:#fff;color:var(--dg);font-size:44px;font-weight:700;border-radius:50px;padding:14px 44px;box-shadow:0 10px 26px rgba(0,0,0,.18)">อาหารปักษ์ใต้ ร้อน ๆ ถึงบ้าน 🍛</span></div>`,
+s10b:()=>`
+  <div class="abs" style="inset:0;background:radial-gradient(circle at 50% 40%,#1E7A46,#0F4D2E 60%,#0A361F)"></div>
+  <div class="abs" style="inset:0;opacity:.18;background-image:radial-gradient(#fff 2px,transparent 2.5px);background-size:52px 52px"></div>
+  <div class="abs" id="eLogo" style="left:330px;top:250px;width:420px;height:420px;filter:drop-shadow(0 16px 30px rgba(0,0,0,.35))">${svgLogo()}</div>
+  <div class="abs" id="eT1" style="left:0;width:1080px;top:700px;text-align:center;color:#FFF3DC;font-size:150px;font-weight:800;line-height:1.2">แอมปักใต้</div>
+  <div class="abs" id="eT2" style="left:0;width:1080px;top:905px;text-align:center;color:#E9F7EE;font-size:56px;font-weight:600">อาหารปักษ์ใต้ ส่งตรงถึงคุณ</div>
+  <div class="abs" id="eT3" style="left:0;width:1080px;top:990px;text-align:center;color:#B9F5CF;font-size:40px;font-weight:500;line-height:1.5">สั่งง่ายผ่าน LINE Official<br>@ampaktai</div>
+  <div class="linebtn" id="eBtn" style="left:90px;top:1170px;width:900px;justify-content:center"><div style="width:90px;height:90px">${svgLine()}</div>เพิ่มเพื่อน / สั่งอาหารเลย</div>
+  <div class="tap" id="eTap" style="left:760px;top:1240px"></div>
+  <div class="abs" id="eT4" style="left:0;width:1080px;top:1420px;text-align:center"><span style="display:inline-block;background:#FFF3DC;color:var(--dg);font-size:46px;font-weight:700;border-radius:60px;padding:14px 44px">สั่งง่าย • ส่งถึงที่ • เก็บเงินปลายทาง</span></div>`,
+};
+
+const stage=$('#stage');stage.style.width=LY.W+'px';stage.style.height=LY.H+'px';
+function scene(id,html,bg){if(VERT&&VS[id])html=VS[id](html);const d=document.createElement('section');d.className='scene';d.id=id;d.innerHTML=html;if(bg)d.style.background=bg;stage.appendChild(d);return d}
 
 /* ---- Scene 1: intro ---- */
 scene('s1',`
@@ -709,6 +888,9 @@ const STEPS=[
   [8,'รับอาหารและชำระเงินปลายทาง',45.5,50.5],
 ];
 const ov=document.createElement('div');ov.className='abs';ov.style.cssText='inset:0;z-index:60;pointer-events:none';stage.appendChild(ov);
+if(VERT){const st=document.createElement('style');st.textContent=`
+  .step{top:64px}.step .num{width:92px;height:92px;font-size:54px}.step .lbl{font-size:24px}.step .ttl{font-size:46px}
+  #noti{left:40px!important;top:210px!important;width:1000px}.noti .tx{font-size:31px}.noti .hd{font-size:22px}`;document.head.appendChild(st)}
 ov.innerHTML=STEPS.map(([n,t])=>`<div class="step" id="st${n}" style="opacity:0"><div class="num">${n}</div><div><div class="lbl">STEP ${n}</div><div class="ttl">${t}</div></div></div>`).join('')+`
   <div class="noti" id="noti" style="left:1220px;top:40px;opacity:0">
     <div style="width:70px;height:70px;flex:none">${svgLine()}</div>
@@ -826,9 +1008,8 @@ function renderS2(t){
   const cam=$('#s2cam');
   // zoom from whole composition into phone: phone center (1300,540) -> stage center, scale to match chat phone
   const z=E.io(P(t,7.65,1.0));
-  const sc=lerp(1,1040/920,z),cx=1300,cy=540;
-  cam.style.transform=`translate(${(960-cx*sc)*z + 0*(1-z)}px,${(540-cy*sc)*z}px) scale(${sc})`;
-  if(z>0){cam.style.transform=`translate(${lerp(0,960-cx*sc,z)}px,${lerp(0,540-cy*sc,z)}px) scale(${sc})`}
+  const Z=LY.s2z,sc=lerp(1,Z.sc,z);
+  cam.style.transform=`translate(${lerp(0,Z.tx-Z.cx*sc,z)}px,${lerp(0,Z.ty-Z.cy*sc,z)}px) scale(${sc})`;
   const ce=E.out(P(t,3.9,.8));tf($('#s2cust'),{x:(1-ce)*-200,y:Math.sin(t*2)*4,o:ce});
   $('#s2cust').style.opacity=ce*(1-E.out(P(t,7.7,.6)));
   face($('#s2cust'),t,{happy:t>5.85&&t<7.4?1:0});
@@ -852,7 +1033,7 @@ const typeinBar=(t)=>{
 };
 function renderChat(t){
   const k=E.out(P(t,8.75,.7));
-  tf($('#cLeft'),{x:(1-k)*-700,o:k});tf($('#cRight'),{x:(1-k)*700,o:k});
+  tf($('#cLeft'),{x:(1-k)*-LY.panel.x,y:(1-k)*LY.panel.y,o:k});tf($('#cRight'),{x:(1-k)*LY.panel.x,y:(1-k)*LY.panel.y,o:k});
   $('#chat').style.opacity=E.out(P(t,8.45,.3));
   chat.render(t);typeinBar(t);
   // speaker activity
@@ -878,7 +1059,7 @@ function renderChat(t){
   if(t>31.6){
     ovl.style.opacity=1;
     $('#okBg').style.opacity=E.out(okIn);
-    ovl.style.clipPath=okOut>0?`circle(${(1-okOut)*1500+0.01}px at 960px 430px)`:'none';
+    ovl.style.clipPath=okOut>0?`circle(${(1-okOut)*1700+0.01}px at ${LY.ok[0]}px ${LY.ok[1]}px)`:'none';
     const c=E.back(P(t,31.75,.5));tf($('#okC'),{s:c,o:clamp(c)});
     const pth=$('#okPath');const L=200;pth.style.strokeDasharray=L;pth.style.strokeDashoffset=L*(1-E.out(P(t,32.0,.4)));
     const tt=E.out(P(t,32.25,.4));tf($('#okT'),{y:(1-tt)*40,o:tt});
@@ -888,8 +1069,8 @@ function renderChat(t){
   // phone shrinks before kitchen
 }
 function renderS7(t){
-  wipe($('#s7'),t,33.25,.65,960,430);
-  const tk=E.out(P(t,33.9,.55));tf($('#tk'),{y:(1-tk)*-420,r:(1-tk)*-6+Math.sin(t*2)*1.2,o:clamp(tk*2)});
+  wipe($('#s7'),t,33.25,.65,...LY.w7);
+  const tk=E.out(P(t,33.9,.55));tf($('#tk'),{s:LY.tkS,y:(1-tk)*-420,r:(1-tk)*-6+Math.sin(t*2)*1.2,o:clamp(tk*2)});
   const cooking=t>34.4&&t<37.1;
   const toss=cooking?Math.max(0,Math.sin((t-34.4)*Math.PI*1.6)):0;
   tf($('#wok'),{y:-toss*30,r:-toss*7});
@@ -908,12 +1089,12 @@ function renderS7(t){
   const st=E.back(P(t,38.25,.4));tf($('#stamp'),{s:2-st,r:-8,o:clamp(st)});
 }
 function renderS8(t){
-  wipe($('#s8'),t,39.1,.6,1300,600);
+  wipe($('#s8'),t,39.1,.6,...LY.w8);
   // rider departs at 40.2; scroll distance
   const tt=Math.max(0,t-40.2);const dist=tt<1.2?380*tt*tt:380*1.44+912*(tt-1.2); // accel then cruise
   tf($('#far'),{x:-dist*.15});tf($('#mid'),{x:-dist*.6});
   $('#dash').style.transform=`translateX(${-(dist%180)}px)`;
-  const rx=lerp(0,140,E.io(P(t,40.2,1.6)));
+  const rx=lerp(0,LY.drift,E.io(P(t,40.2,1.6)));
   const bob=t>40.2?Math.sin(t*22)*2:0;
   tf($('#rider8'),{x:rx,y:bob,r:t>40.2?-1.5*clamp(tt*2):0,o:1});
   $$('#rider8 .spin').forEach(w=>w.setAttribute('transform',`rotate(${dist*1.5})`));
@@ -922,8 +1103,8 @@ function renderS8(t){
   face($('#rider8'),t,{});
   // bag flies from shop door into box
   const fb=P(t,39.5,.55);const fbv=t>39.45&&t<40.08;
-  const bx=lerp(300,640,E.io(fb)),by=lerp(640,600,fb)-Math.sin(Math.PI*fb)*160;
-  const fbe=$('#flybag');fbe.style.opacity=fbv?1:0;fbe.style.transform=`translate(${bx-300}px,${by-640}px) scale(${1-.4*fb}) rotate(${fb*30}deg)`;
+  const F=LY.fly,bx=lerp(F.x0,F.x1,E.io(fb)),by=lerp(F.y0,F.y1,fb)-Math.sin(Math.PI*fb)*160;
+  const fbe=$('#flybag');fbe.style.opacity=fbv?1:0;fbe.style.transform=`translate(${bx-F.base[0]}px,${by-F.base[1]}px) scale(${1-.4*fb}) rotate(${fb*30}deg)`;
   const lid=Math.sin(Math.PI*P(t,40.0,.25));tf($('#rider8 .box'),{y:-lid*8});
   // map
   const mk=E.out(P(t,40.9,.6));tf($('#map'),{x:(1-mk)*700,o:mk});
@@ -935,29 +1116,29 @@ function renderS8(t){
   const pb=Math.sin(t*5)*.06+1;$('#map .pinB').setAttribute('transform',`translate(460 300) scale(${pb})`);
 }
 function renderS9(t){
-  wipe($('#s9'),t,45.1,.6,960,540);
+  wipe($('#s9'),t,45.1,.6,...LY.w9);
   const ar=E.out(P(t,45.15,1.05));
   const dist=ar*900;
-  tf($('#rider9'),{x:lerp(-900,0,ar),y:ar<1?Math.sin(t*22)*2:0,o:1});
+  tf($('#rider9'),{x:lerp(LY.rider9x,0,ar),y:ar<1?Math.sin(t*22)*2:0,o:1});
   $$('#rider9 .spin').forEach(w=>w.setAttribute('transform',`rotate(${dist*1.5})`));
   face($('#rider9'),t,{happy:t>47.6?1:0});
   const cin=E.out(P(t,45.6,.6));tf($('#cust9'),{y:(1-cin)*60+Math.sin(t*2)*3,o:cin});
   face($('#cust9'),t,{happy:t>46.9?1:0});
   // bag handover (rider box -> customer)
   const bk=E.io(P(t,46.25,.8));const bv=t>46.15;
-  const bx=lerp(390,1370,bk),by=lerp(560,700,bk)-Math.sin(Math.PI*bk)*120;
-  tf($('#bag9'),{x:bx-700,y:by-600,s:lerp(.7,1,bk),o:bv?clamp(P(t,46.15,.15)):0});
+  const B=LY.bag9,bx=lerp(B.x0,B.x1,bk),by=lerp(B.y0,B.y1,bk)-Math.sin(Math.PI*bk)*120;
+  tf($('#bag9'),{x:bx-B.base[0],y:by-B.base[1],s:lerp(.7,1,bk),o:bv?clamp(P(t,46.15,.15)):0});
   // cash customer -> rider
   ['#bill1','#bill2','#bill3','#bill4'].forEach((id,i)=>{
     const k=E.io(P(t,47.25+i*.12,.65));const v=t>47.15+i*.12&&t<48.4+i*.1;
-    tf($(id),{x:lerp(0,-430,k)+i*8,y:-Math.sin(Math.PI*k)*120-i*6,r:lerp(-10,8,k)+i*4,o:v?clamp(P(t,47.15+i*.12,.15))*(1-P(t,48.15+i*.1,.25)):0});
+    tf($(id),{x:lerp(0,LY.bills.dx,k)+i*8,y:lerp(0,LY.bills.dy,k)-Math.sin(Math.PI*k)*120-i*6,r:lerp(-10,8,k)+i*4,o:v?clamp(P(t,47.15+i*.12,.15))*(1-P(t,48.15+i*.1,.25)):0});
   });
   const c=popK(t,47.65,.5);tf($('#cod'),{s:c.s,y:-10*Math.sin(t*2.5),o:c.o});
   const p=E.out(P(t,48.4,.45));tf($('#p9'),{y:(1-p)*-120,o:p});
   chat9.render(t);
 }
 function renderS10a(t){
-  wipe($('#s10a'),t,50.5,.6,960,540);
+  wipe($('#s10a'),t,50.5,.6,...LY.w10);
   face($('#cust10'),t,{happy:t>51.0?1:0});
   tf($('#cust10'),{y:Math.sin(t*3)*5});
   const y=popK(t,51.05,.45);tf($('#yum'),{s:y.s,o:y.o});
@@ -966,7 +1147,7 @@ function renderS10a(t){
   $$('.spark').forEach((e,i)=>{const k=(t*1.3+i*.37)%1;tf(e,{s:.5+Math.sin(k*Math.PI),o:t>51?Math.sin(k*Math.PI):0})});
 }
 function renderS10b(t){
-  wipe($('#s10b'),t,52.3,.7,960,540);
+  wipe($('#s10b'),t,52.3,.7,...LY.w10);
   const l=popK(t,52.6,.6);tf($('#eLogo'),{s:l.s,r:(1-l.s)*-30,o:l.o});
   const a=E.out(P(t,52.85,.5));tf($('#eT1'),{y:(1-a)*50,o:a});
   const b=E.out(P(t,53.05,.5));tf($('#eT2'),{y:(1-b)*40,o:b});
@@ -981,7 +1162,8 @@ function renderSteps(t){
   for(const [n,,a,b] of STEPS){
     const el=$('#st'+n);const k=Math.min(E.out(P(t,a,.45)),1-E.in(P(t,b-.3,.3)));
     show(el,k>0.001);if(k<=0.001)continue;
-    tf(el,{x:(1-k)*-80,o:k});
+    const cx=VERT?(LY.W-el.offsetWidth)/2-40:0;
+    tf(el,{x:cx+(1-k)*-80,o:k});
     el.querySelector('.num').style.transform=`scale(${.6+.4*E.back(P(t,a+.1,.45))})`;
   }
 }
@@ -1002,7 +1184,7 @@ function renderProg(t){
   const on=t>34.55&&t<45.0;show(pr,on);if(!on)return;
   // position: kitchen bottom-center, delivery under map
   const inK=t<39.2;
-  pr.style.left=(inK?560:1190)+'px';pr.style.top=(inK?905:830)+'px';
+  const pp=LY.prog[inK?0:1];pr.style.left=pp[0]+'px';pr.style.top=pp[1]+'px';
   const k=inK?E.out(P(t,34.6,.5))*(1-E.in(P(t,38.9,.3))):E.out(P(t,41.0,.5))*(1-E.in(P(t,44.7,.3)));
   tf(pr,{y:(1-k)*80,o:k});
   const st=[t>34.8?2:1, t>40.4?2:(t>35.0?1:0), t>40.6?1:0]; // 0 pending,1 active,2 done
@@ -1034,7 +1216,7 @@ function render(t){
 /* =====================================================================
    Boot: measure once fonts + images are ready
    ===================================================================== */
-window.DURATION=DUR;window.SFX=SFX;
+window.DURATION=DUR;window.SFX=SFX;window.LAYOUT={W:LY.W,H:LY.H};
 window.ready=(async()=>{
   await document.fonts.ready;
   await Promise.all([...document.images].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})));
@@ -1046,7 +1228,7 @@ window.ready=(async()=>{
 window.seek=t=>render(t);
 
 /* live preview when opened directly in a browser (?render disables it) */
-function fit(){const s=Math.min(innerWidth/1920,innerHeight/1080);stage.style.transform=`translate(${(innerWidth-1920*s)/2}px,${(innerHeight-1080*s)/2}px) scale(${s})`}
+function fit(){const s=Math.min(innerWidth/LY.W,innerHeight/LY.H);stage.style.transform=`translate(${(innerWidth-LY.W*s)/2}px,${(innerHeight-LY.H*s)/2}px) scale(${s})`}
 if(!/render/.test(location.search)){
   addEventListener('resize',fit);fit();
   const q=location.search.match(/t=([\d.]+)/);

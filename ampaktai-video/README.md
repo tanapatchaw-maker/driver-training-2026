@@ -4,9 +4,10 @@ A 55-second animated explainer (1920×1080, 30 fps, Thai) showing how a customer
 **แอมปักใต้** through its LINE Official Account (@ampaktai). The full journey runs from adding the account as a
 friend, through chatting with the admin, to delivery and cash on delivery (COD).
 
-- **Video:** `ampaktai-line-order.mp4`
+- **Video (16:9):** `ampaktai-line-order.mp4` (1920×1080)
+- **Video (9:16, TikTok / Reels / Shorts):** `ampaktai-line-order-vertical.mp4` (1080×1920). Same timeline, soundtrack and text, re-laid out for portrait.
 - **Source:** `index.html`. Every frame is a pure function of time (`seek(t)`), so the video renders deterministically.
-  Open the file in a browser to watch a silent live preview. Add `?t=12.5` to the URL to freeze on a single moment.
+  Open the file in a browser to watch a silent live preview. Add `?t=12.5` to the URL to freeze on a single moment, and `?v` to switch to the vertical layout.
 
 ## Scenes
 
@@ -33,12 +34,13 @@ and cash.
 Requires Node, ffmpeg and Playwright with Chromium.
 
 ```bash
-node tools/render.cjs ampaktai-line-order.mp4 4   # output file, parallel workers
-node tools/snap.cjs /tmp/frames 12 30.6 47.8      # PNG stills at given seconds
+node tools/render.cjs ampaktai-line-order.mp4 4                # output file, parallel workers
+node tools/render.cjs ampaktai-line-order-vertical.mp4 4 v     # vertical 9:16 version
+node tools/snap.cjs /tmp/frames 12 30.6 47.8                   # PNG stills at given seconds (VERT=1 for vertical)
 ```
 
 To change any Thai text, edit `index.html`. Chat messages live in `CH`, step captions in `STEPS` and
-notifications in `NOTI`. The scene timing constants sit next to that text.
+notifications in `NOTI`. The scene timing constants sit next to that text. Vertical positions are in `VS` (markup) and `LY` (layout constants).
 
 Food photos in `assets/` are cropped from the restaurant's reference infographic. The font is Prompt
 (Google Fonts, OFL).
